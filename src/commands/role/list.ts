@@ -2,8 +2,16 @@ import { CommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
 import embedUtils from "../../utils/embedUtils";
 import links from "../../services/API/links";
 import { RoleLinksTreeItem } from "../../models";
+import settings from "../../services/API/settings";
+import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleList(interaction: CommandInteraction) {
+    // without role management the bot has no roles and no links
+    const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
+
+    if(roleManagement === false)
+        return interaction.reply({ embeds: [embedUtils.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+
     const res = await links.getRoleLinksTree(interaction.guildId!);
     const embeds = [];
 	
@@ -27,11 +35,11 @@ export async function roleList(interaction: CommandInteraction) {
             chunk.forEach((item: RoleLinksTreeItem) => {
 
                 let linkedRoleIds: string = "-";
-                if(item.linkedRoleIds.length > 0)
-                    linkedRoleIds = item.linkedRoleIds.map(x => `<@&${x}>`).join("\n");
+                if(item.linkedRoleDiscordIds.length > 0)
+                    linkedRoleIds = item.linkedRoleDiscordIds.map(x => `<@&${x}>`).join("\n");
 
                 embed.addFields(
-                    { name: `*Role*`, value: `<@&${item.botRoleId}>`, inline: true},
+                    { name: `*Role*`, value: `<@&${item.botRoleDiscordId}>`, inline: true},
                     { name: `*Links*`, value: `${linkedRoleIds}`, inline: true},
                     { name: `\u200b`, value: `\u200b`, inline: true}
                 )

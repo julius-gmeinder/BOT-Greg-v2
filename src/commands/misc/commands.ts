@@ -64,6 +64,7 @@ export async function execute(interaction: CommandInteraction) {
 
     const adminCommandsEmbed = new EmbedBuilder()
         .setTitle("Admin Commands")
+        .setDescription("Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable `/settings role-management` to get an alert role and a role per filter (needed for `/roles` and `/role link`)")
         .setColor(embeds.warningHex)
         .setTimestamp()
         .setThumbnail(interaction.guild!.members.me!.displayAvatarURL())

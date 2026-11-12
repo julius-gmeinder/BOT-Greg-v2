@@ -8,7 +8,7 @@ export const data = new SlashCommandBuilder()
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(subcommand => subcommand
         .setName("config")
-        .setDescription("Enable or disable your alerts, choose a channel for match alerts, result alerts and news alerts!")
+        .setDescription("Enable or disable your alerts, choose a channel for match alerts and result alerts!")
     )
 
 export async function execute(interaction: ChatInputCommandInteraction) {

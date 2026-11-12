@@ -1,6 +1,8 @@
 import { ActionRowBuilder, CommandInteraction, ComponentType, EmbedBuilder, GuildMemberRoleManager, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
 import roles from "../../services/API/roles";
+import settings from "../../services/API/settings";
 import embeds from "../../utils/embedUtils";
+import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export const data = new SlashCommandBuilder()
     .setName("roles")
@@ -8,6 +10,12 @@ export const data = new SlashCommandBuilder()
     .setDMPermission(false);
 
 export async function execute(interaction: CommandInteraction) {
+    // without role management the bot has no roles, alerts are sent without mentions
+    const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
+
+    if(roleManagement === false)
+        return interaction.reply({ embeds: [embeds.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+
     const res = await roles.getRoles(interaction.guildId!);
 
     if(res.status !== 200)
@@ -16,7 +24,7 @@ export async function execute(interaction: CommandInteraction) {
     const roleIds = await res.json() as string[];
 
     if(roleIds.length === 0)
-        return interaction.reply({ embeds: [embeds.error("Alerts are currently not configured on this server.\nThere are no alert roles to select")], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply({ embeds: [embeds.error("There are currently no alert roles to select on this server")], flags: [MessageFlags.Ephemeral] });
 
     if(!hasManageRoles(interaction))
         return interaction.reply({ embeds: [embeds.error("**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions")], flags: [MessageFlags.Ephemeral] });

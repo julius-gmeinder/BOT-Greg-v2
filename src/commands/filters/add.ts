@@ -1,49 +1,62 @@
-import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
-import embeds from "../../../utils/embedUtils";
-import filtersMatRes from "../../../services/API/filtersMatRes";
-import colorUtils from "../../../utils/colorUtils";
+import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, Role } from "discord.js";
+import embeds from "../../utils/embedUtils";
+import filters from "../../services/API/filters";
+import settings from "../../services/API/settings";
+import { readErrorCode } from "../../services/API/request";
+import { FilterProps, BuildFilterField, BuildFilterRoleName, IsValidTier } from "../../utils/filterUtils";
+import { CreateBotRole, HasManageRoles, missingManageRolesMessage } from "../../utils/roleUtils";
 
-export async function filtersAddMatRes(interaction: ChatInputCommandInteraction) {
-    const team = interaction.options.getString("team");
-    const event = interaction.options.getString("event");
-    const eventTier = interaction.options.getString("event-tier");
-    const vrsRank = interaction.options.getInteger("vrs-rank");
-    const stars = interaction.options.getInteger("stars");
+export async function filtersAdd(interaction: ChatInputCommandInteraction) {
+    const filter: FilterProps = {
+        team: interaction.options.getString("team"),
+        event: interaction.options.getString("event"),
+        eventTier: interaction.options.getInteger("event-tier"),
+        vrsRank: interaction.options.getInteger("vrs-rank"),
+        hltvCoverage: interaction.options.getBoolean("hltv-coverage")
+    };
 
-    if(!team && !event && !eventTier && !vrsRank && !stars)
-        return interaction.reply({ embeds: [embeds.error("Add atleast one parameter: Team, Event, Event-Tier, VRS-Rank or Stars")], flags: [MessageFlags.Ephemeral]});
+    if(!filter.team && !filter.event && filter.eventTier === null && filter.vrsRank === null && filter.hltvCoverage === null)
+        return interaction.reply({ embeds: [embeds.error("Add atleast one parameter: Team, Event, Event-Tier, VRS-Rank or HLTV-Coverage")], flags: [MessageFlags.Ephemeral]});
 
-    if(team && team.length > 64)
+    if(filter.team && filter.team.length > 64)
         return interaction.reply({ embeds: [embeds.error("The team parameter can not be longer than 64 characters")], flags: [MessageFlags.Ephemeral]});
 
-    if(event && event.length > 64)
-        return interaction.reply({ embeds: [embeds.error("The event parameter can not be longer than 64 characters")], flags: [MessageFlags.Ephemeral]});
+    if(filter.event && filter.event.length > 128)
+        return interaction.reply({ embeds: [embeds.error("The event parameter can not be longer than 128 characters")], flags: [MessageFlags.Ephemeral]});
 
-    if(eventTier && eventTier.length > 8)
-        return interaction.reply({ embeds: [embeds.error("The event-tier parameter can not be longer than 8 characters")], flags: [MessageFlags.Ephemeral]});
+    if(filter.eventTier !== null && !IsValidTier(filter.eventTier))
+        return interaction.reply({ embeds: [embeds.error("The event-tier parameter is invalid. Please select one of the suggested tiers")], flags: [MessageFlags.Ephemeral]});
 
-    if(vrsRank && (vrsRank < 1 || vrsRank > 500))
-        return interaction.reply({ embeds: [embeds.error("The vrs-rank paramenter needs to be a number between 1 and 500")], flags: [MessageFlags.Ephemeral]});
+    if(filter.vrsRank !== null && (filter.vrsRank < 1 || filter.vrsRank > 1000))
+        return interaction.reply({ embeds: [embeds.error("The vrs-rank paramenter needs to be a number between 1 and 1000")], flags: [MessageFlags.Ephemeral]});
 
-    if(stars && (stars < 1 || stars > 5))
-        return interaction.reply({ embeds: [embeds.error("The stars paramenter needs to be a number between 1 and 5")], flags: [MessageFlags.Ephemeral]});
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
-    const filterRole = await interaction.guild?.roles.create({
-        name: BuildRoleName(team, event, eventTier, vrsRank, stars),
-        permissions: [],
-        colors: {
-            primaryColor: colorUtils.neturalHex
+    // a filter only gets a role if the role management is enabled
+    const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
+
+    if(roleManagement === null)
+        return interaction.editReply({ embeds: [embeds.error("There has been an error running the command")] });
+
+    let filterRole: Role | null = null;
+
+    if(roleManagement) {
+        if(!HasManageRoles(interaction.guild))
+            return interaction.editReply({ embeds: [embeds.error(missingManageRolesMessage)] });
+
+        try {
+            filterRole = await CreateBotRole(interaction.guild!, BuildFilterRoleName(filter));
         }
-    }); 
+        catch (err) {
+            console.log(`[error] ${err} encountered on ${interaction.guild?.name} (${interaction.guildId}) while creating a filter role`);
+            return interaction.editReply({ embeds: [embeds.error("The role of the filter could not be created. Please check the bots permissions and try again")] });
+        }
+    }
 
-    const res = await filtersMatRes.add({
-        guildId: interaction.guildId!,
-        roleId: filterRole!.id,
-        team: team,
-        event: event,
-        eventTier: eventTier,
-        vrsRank: vrsRank,
-        stars: stars
+    const res = await filters.add({
+        guildDiscordId: interaction.guildId!,
+        roleDiscordId: filterRole?.id ?? null,
+        ...filter
     });
 
     if (res.status === 204) {
@@ -51,61 +64,35 @@ export async function filtersAddMatRes(interaction: ChatInputCommandInteraction)
             .setColor(embeds.successHex)
             .setTitle(`New filter added`)
             .setTimestamp()
-            .setDescription(`✨ <@&${filterRole?.id}>`)
+            .addFields(BuildFilterField(filter));
 
-        const valueFields: string[] = [];
-        const emptyFields: string[] = [];
+        if(filterRole)
+            embed.setDescription(`✨ <@&${filterRole.id}>`);
+        else
+            embed.setFooter({ text: "Want a role that gets mentioned for this filter? Enable /settings role-management" });
 
-        team ? valueFields.push(`Team: ${team}`) : emptyFields.push("Team");
-        event ? valueFields.push(`Event: ${event}`) : emptyFields.push("Event");
-        eventTier ? valueFields.push(`Event Tier: ${eventTier}`) : emptyFields.push("Event Tier");
-        vrsRank ? valueFields.push(`VRS Rank: ${vrsRank}`) : emptyFields.push("VRS Rank");
-        stars ? valueFields.push(`Stars: ${stars}`) : emptyFields.push("Stars");
-
-        embed.addFields(
-            { name: `${valueFields.join(", ")}`, value: `${emptyFields.join(", ")}: 🚫`, inline: false }
-        );
-
-        return interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
+        return interaction.editReply({ embeds: [embed] });
     }
 
-    if(res.status !== 204)
-        await interaction.guild?.roles.cache.get(filterRole!.id)?.delete();
+    // the filter was not saved, so its role is not needed
+    await filterRole?.delete().catch(() => null);
 
-    if (res.status === 400)
-        return interaction.reply({ embeds: [embeds.error("There has been an error parsing your parameters. Please check them again")], flags: [MessageFlags.Ephemeral]});
+    const errorCode = await readErrorCode(res);
 
     if (res.status === 409) {
-        const data = await res.json();
+        if(errorCode === "limit")
+            return interaction.editReply({ embeds: [embeds.error("You have reached the maximum amount of filters (20) for this server")] });
 
-        if(data === "limit")
-            return interaction.reply({ embeds: [embeds.error("You have reached the maximum amount of filters (20) for this server")], flags: [MessageFlags.Ephemeral]});
-
-        if(data === "duplicate")
-            return interaction.reply({ embeds: [embeds.error("This filter already exists")], flags: [MessageFlags.Ephemeral]});
+        if(errorCode === "duplicate")
+            return interaction.editReply({ embeds: [embeds.error("This filter already exists")] });
     }
-    
-    return interaction.reply({ embeds: [embeds.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral]});
-}
 
-function BuildRoleName(team: string | null, event: string | null, eventTier: string | null, vrsRank: number | null, stars: number | null): string {
-    const prefix: string = "⭕ Alerts:";
-    const parts: string[] = [];
+    // the role management was toggled while the command was running
+    if (errorCode === "roleManagement" || errorCode === "roleRequired")
+        return interaction.editReply({ embeds: [embeds.error("The role management setting of this server has just been changed. Please try again")] });
 
-    if(team)
-        parts.push(team);
+    if (res.status === 400)
+        return interaction.editReply({ embeds: [embeds.error("There has been an error parsing your parameters. Please check them again")] });
 
-    if(event)
-        parts.push(event);
-
-    if(eventTier)
-        parts.push(eventTier);
-
-    if(vrsRank)
-        parts.push(`Top ${vrsRank.toString()}`);
-
-    if(stars)
-        parts.push(`${stars} Star${stars > 1 ? "s" : ""}`)
-
-    return `${prefix} ${parts.join(", ")}`;
+    return interaction.editReply({ embeds: [embeds.error("There has been an error running the command")] });
 }

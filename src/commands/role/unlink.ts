@@ -1,8 +1,16 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CommandInteraction, ComponentType, EmbedBuilder, MessageFlags, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
 import links from "../../services/API/links";
+import settings from "../../services/API/settings";
 import embeds from "../../utils/embedUtils";
+import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleUnlink(interaction: CommandInteraction) {
+    // role links only exist with role management (disabling it deletes all links)
+    const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
+
+    if(roleManagement === false)
+        return interaction.reply({ embeds: [embeds.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+
     const res = await links.getLinkedBotRoles(interaction.guildId!);
 
     if(res.status !== 200)
@@ -77,8 +85,8 @@ export async function roleUnlink(interaction: CommandInteraction) {
         if(buttonInteraction.customId == "unlink") {
             
             const res = await links.unlink({
-                botRoleId: selectedBotRoleId, 
-                linkedRoleId: selectedLinkedRoleId,
+                botRoleDiscordId: selectedBotRoleId,
+                linkedRoleDiscordId: selectedLinkedRoleId,
             });
 
             if(res.status === 204) {

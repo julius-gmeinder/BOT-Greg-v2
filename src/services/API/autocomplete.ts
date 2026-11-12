@@ -1,41 +1,25 @@
-import { config } from "../../config";
-import fetch, { Response } from 'node-fetch-cjs';
+import { Response } from 'node-fetch-cjs';
+import { get, query } from "./request";
 
 export default {
     getTeams,
     getEvents,
     getTiers,
-    getVrs,
-    getStars,
-    getNewsTypes
+    getVrs
 }
 
-async function getTeams(input:string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Autocomplete/teams?input=${input}`);
-    return res;
+async function getTeams(input: string): Promise<Response> {
+    return get(`api/Autocomplete/teams${query({ input: input })}`);
 }
 
-async function getEvents(input:string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Autocomplete/events?input=${input}`);
-    return res;
+async function getEvents(input: string): Promise<Response> {
+    return get(`api/Autocomplete/events${query({ input: input })}`);
 }
 
 async function getTiers(): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Autocomplete/tiers`);
-    return res;
+    return get(`api/Autocomplete/tiers`);
 }
 
 async function getVrs(): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Autocomplete/vrs`);
-    return res;
-}
-
-async function getStars(): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Autocomplete/stars`);
-    return res;
-}
-
-async function getNewsTypes(): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Autocomplete/newstypes`);
-    return res;
+    return get(`api/Autocomplete/vrs`);
 }

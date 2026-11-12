@@ -1,33 +1,35 @@
 import { Client, EmbedBuilder, TextChannel } from "discord.js";
 import embeds from "../utils/embedUtils";
 import { MatchDelay } from "../models";
-import { BuildAttachment, BuildRolesString, GetUnixTimestamp } from "./helpers/alertsHelper";
+import { ApplyMatchSource, BuildMatchFiles, BuildRolesString, BuildVersusString, GetUnixTimestamp } from "./helpers/alertsHelper";
 
 export default async function SendMatchDelays(client: Client<boolean>, matchDelays: MatchDelay[]) {
     matchDelays.forEach((matchDelay: MatchDelay) => {
-        const { url, teamX, teamY, date, time } = matchDelay.match;
+        const { match } = matchDelay;
 
+        // match.dateTime is the new start time
         const embed = new EmbedBuilder()
             .setColor(embeds.warningHex)
-            .setAuthor({ name: 'hltv.org', iconURL: `attachment://hltv.png`, url: url })
-            .setTitle(`${teamX} vs ${teamY} delayed`)
-            .setURL(url)
-            .setDescription(`🔴 Live **<t:${GetUnixTimestamp(date, time)}:R>**\n\u200b`)
+            .setTitle(`${BuildVersusString(match)} delayed`)
+            .setDescription(`🔴 Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**\n\u200b`)
             .setTimestamp();
-        
+
+        ApplyMatchSource(embed, match);
+
         matchDelay.guilds.forEach(async (guild) => {
-            const channel = client.channels.cache.get(guild.channelId) as TextChannel;
+            const channel = client.channels.cache.get(guild.channelDiscordId) as TextChannel;
 
             if(!channel)
                 return;
-            
-            await channel.send({ 
-                content: guild.mentionOnDelays ? BuildRolesString(guild.roleIds) : "",
-                files: [BuildAttachment()],
+
+            await channel.send({
+                // no roles (disabled role management) => no mention, regardless of the setting
+                content: guild.mentionOnDelays ? BuildRolesString(guild.roleDiscordIds) : undefined,
+                files: BuildMatchFiles(match),
                 embeds: [embed]
             }).catch(async (err) => {
                 console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-                await channel.send({ 
+                await channel.send({
                     embeds: [embeds.error(
                         `There has been an error sending out a match alert\n
                         Try revising the bots permissions, reinvite Greg or reset your servers configuration.\n\n

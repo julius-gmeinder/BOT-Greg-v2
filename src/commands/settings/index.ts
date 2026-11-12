@@ -3,14 +3,21 @@ import { mentionOnDelays } from "./mentionOnDelays";
 import { mentionOnResults } from "./mentionOnResults";
 import { censorResults } from "./censorResults";
 import { pauseAlerts } from "./pauseAlerts";
+import { roleManagement } from "./roleManagement";
 
-import { mentionOnNews } from "./mentionOnNews";
-import { alwaysShowNewsImage } from "./alwaysShowNewsImage";
 export const data = new SlashCommandBuilder()
     .setName("settings")
     .setDescription("All settings related subcommands (censoring results, mentioning on match delays, ...")
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(subcommand => subcommand
+        .setName("role-management")
+        .setDescription("Let Greg create and mention roles: an alert role and a role per filter (default is off/false)")
+        .addBooleanOption(option =>
+            option.setName('value')
+                .setDescription(`Role management`)
+                .setRequired(true))
+    )
     .addSubcommand(subcommand => subcommand
         .setName("mention-on-delays")
         .setDescription("Choose if you want to be mentioned when a match gets delayed (default is off/false)")
@@ -42,26 +49,13 @@ export const data = new SlashCommandBuilder()
             option.setName('value')
                 .setDescription(`Pause Alerts`)
                 .setRequired(true))
-    )
-    .addSubcommand(subcommand => subcommand
-        .setName("mention-on-news")
-        .setDescription("Choose if you want to be mentioned for news alerts (default is on/true)")
-        .addBooleanOption(option =>
-            option.setName('value')
-                .setDescription(`Mentions on news alerts`)
-                .setRequired(true))
-    )
-    .addSubcommand(subcommand => subcommand
-        .setName("always-show-news-image")
-        .setDescription("Choose if every (not just featured) news alert shows an image (if available) (default is off/false)")
-        .addBooleanOption(option =>
-            option.setName('value')
-                .setDescription(`Always Show News Image`)
-                .setRequired(true))
     );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
+
+    if(subcommand === "role-management")
+        await roleManagement(interaction);
 
     if(subcommand === "mention-on-delays")
         await mentionOnDelays(interaction);
@@ -74,10 +68,4 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if(subcommand === "pause-alerts")
         await pauseAlerts(interaction);
-
-    if(subcommand === "mention-on-news")
-        await mentionOnNews(interaction);
-
-    if(subcommand === "always-show-news-image")
-        await alwaysShowNewsImage(interaction);
 }

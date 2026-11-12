@@ -6,7 +6,7 @@ export async function mentionOnResults(interaction: ChatInputCommandInteraction)
     const newValue = interaction.options.getBoolean("value");
 
     const res = await settings.toggleMentionOnResults({
-        guildId: interaction.guildId!,
+        guildDiscordId: interaction.guildId!,
         newValue: newValue!
     });
 

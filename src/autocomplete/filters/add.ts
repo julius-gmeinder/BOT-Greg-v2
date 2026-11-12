@@ -1,8 +1,8 @@
 import { AutocompleteInteraction } from "discord.js";
-import autocomplete from "../../../services/API/autocomplete";
-import { AutocompleteDTO, AutocompleteIntDTO } from "../../../models";
+import autocomplete from "../../services/API/autocomplete";
+import { AutocompleteDTO, AutocompleteIntDTO } from "../../models";
 
-export async function autocompleteFiltersAddMatchesResults(interaction: AutocompleteInteraction) {
+export async function autocompleteFiltersAdd(interaction: AutocompleteInteraction) {
     const focused = interaction.options.getFocused(true);
 
     if(focused.name === "team") {
@@ -13,7 +13,7 @@ export async function autocompleteFiltersAddMatchesResults(interaction: Autocomp
 
         const teams = await res.json() as Array<AutocompleteDTO>;
         return interaction.respond(teams);
-    }  
+    }
 
     if(focused.name === "event") {
         const res = await autocomplete.getEvents(focused.value)
@@ -25,24 +25,15 @@ export async function autocompleteFiltersAddMatchesResults(interaction: Autocomp
         return interaction.respond(events);
     }
 
+    // the value of a tier is a number (0 Major - 4 C-Tier)
     if(focused.name === "event-tier"){
         const res = await autocomplete.getTiers()
 
         if(res.status !== 200)
             return;
 
-        const tiers = await res.json() as Array<AutocompleteDTO>;
+        const tiers = await res.json() as Array<AutocompleteIntDTO>;
         return interaction.respond(tiers);
-    }
-
-    if(focused.name === "stars") {
-        const res = await autocomplete.getStars()
-
-        if(res.status !== 200)
-            return;
-
-        const stars = await res.json() as Array<AutocompleteIntDTO>;
-        return interaction.respond(stars);
     }
 
     if(focused.name === "vrs-rank") {

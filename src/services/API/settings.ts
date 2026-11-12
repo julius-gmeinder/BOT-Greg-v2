@@ -1,102 +1,62 @@
-import { config } from "../../config";
-import fetch, { Response } from 'node-fetch-cjs';
-import { ToggleSetting } from "../../models";
+import { Response } from 'node-fetch-cjs';
+import { GuildSettings, ToggleRoleManagement, ToggleSetting } from "../../models";
+import { get, query, send } from "./request";
 
 export default {
+    getSettings,
+    isRoleManagementEnabled,
     toggleMentionOnDelays,
     toggleMentionOnResults,
     toggleCensorResults,
     togglePauseAlerts,
-    toggleMentionOnNews,
-    toggleAlwaysShowNewsImage
+    toggleRoleManagement
 }
 
-async function toggleMentionOnDelays({guildId, newValue}: ToggleSetting): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Settings/ToggleMentionOnDelays`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            newValue: newValue
-        })
-    });
-    return res;
+async function getSettings(guildId: string): Promise<Response> {
+    return get(`api/Settings${query({ guildDiscordId: guildId })}`);
 }
 
-async function toggleMentionOnResults({guildId, newValue}: ToggleSetting): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Settings/ToggleMentionOnResults`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            newValue: newValue
-        })
-    });
-    return res;
+// null if the settings could not be loaded
+async function isRoleManagementEnabled(guildId: string): Promise<boolean | null> {
+    const res = await getSettings(guildId);
+
+    if(res.status !== 200)
+        return null;
+
+    const settings = await res.json() as GuildSettings;
+    return settings.roleManagement;
 }
 
-async function toggleCensorResults({guildId, newValue}: ToggleSetting): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Settings/ToggleCensorResults`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            newValue: newValue
-        })
-    });
-    return res;
+async function toggleMentionOnDelays(toggle: ToggleSetting): Promise<Response> {
+    return toggleSetting("ToggleMentionOnDelays", toggle);
 }
 
-async function togglePauseAlerts({guildId, newValue}: ToggleSetting): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Settings/TogglePauseAlerts`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            newValue: newValue
-        })
-    });
-    return res;
+async function toggleMentionOnResults(toggle: ToggleSetting): Promise<Response> {
+    return toggleSetting("ToggleMentionOnResults", toggle);
 }
 
-async function toggleMentionOnNews({guildId, newValue}: ToggleSetting): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Settings/ToggleMentionOnNews`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            newValue: newValue
-        })
-    });
-    return res;
+async function toggleCensorResults(toggle: ToggleSetting): Promise<Response> {
+    return toggleSetting("ToggleCensorResults", toggle);
 }
 
-async function toggleAlwaysShowNewsImage({guildId, newValue}: ToggleSetting): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Settings/ToggleAlwaysShowNewsImage`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            newValue: newValue
-        })
+async function togglePauseAlerts(toggle: ToggleSetting): Promise<Response> {
+    return toggleSetting("TogglePauseAlerts", toggle);
+}
+
+// enabling:  the roles have to exist in discord already, the api only saves them
+// disabling: the response contains the role ids, that have to be deleted in discord
+async function toggleRoleManagement(toggle: ToggleRoleManagement): Promise<Response> {
+    return send('PATCH', `api/Settings/ToggleRoleManagement`, {
+        guildDiscordId: toggle.guildDiscordId,
+        newValue: toggle.newValue,
+        alertRoleDiscordId: toggle.alertRoleDiscordId ?? null,
+        filterRoles: toggle.filterRoles ?? []
     });
-    return res;
+}
+
+async function toggleSetting(endpoint: string, {guildDiscordId, newValue}: ToggleSetting): Promise<Response> {
+    return send('PATCH', `api/Settings/${endpoint}`, {
+        guildDiscordId: guildDiscordId,
+        newValue: newValue
+    });
 }

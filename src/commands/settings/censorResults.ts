@@ -6,7 +6,7 @@ export async function censorResults(interaction: ChatInputCommandInteraction) {
     const newValue = interaction.options.getBoolean("value");
 
     const res = await settings.toggleCensorResults({
-        guildId: interaction.guildId!,
+        guildDiscordId: interaction.guildId!,
         newValue: newValue!
     });
 

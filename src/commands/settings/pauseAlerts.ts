@@ -6,7 +6,7 @@ export async function pauseAlerts(interaction: ChatInputCommandInteraction) {
     const newValue = interaction.options.getBoolean("value");
 
     const res = await settings.togglePauseAlerts({
-        guildId: interaction.guildId!,
+        guildDiscordId: interaction.guildId!,
         newValue: newValue!
     });
 

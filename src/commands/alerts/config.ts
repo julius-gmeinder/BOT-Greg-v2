@@ -1,22 +1,24 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, CommandInteraction, ContainerBuilder, MessageFlags, PermissionFlagsBits, Role, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
 import alerts from "../../services/API/alerts";
+import settings from "../../services/API/settings";
 import embedUtils from "../../utils/embedUtils";
-import { AlertConfigStateItem, AlertConfigDTO, AlertConfigResDTO, Match } from "../../models";
+import { AlertConfigStateItem, AlertConfigDTO, AlertConfigResDTO } from "../../models";
 import containerUtils from "../../utils/containerUtils";
 import colorUtils from "../../utils/colorUtils";
-import { GetUnixTimestamp } from "../../services/helpers/alertsHelper";
+import { EscapeLinkUrl, GetUnixTimestamp } from "../../services/helpers/alertsHelper";
 
 export async function alertsConfigAsync(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     const currentConfigRes = await alerts.getConfig(interaction.guildId!);
-    
-    if(currentConfigRes.status !== 200)
+    const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
+
+    if(currentConfigRes.status !== 200 || roleManagement === null)
         return interaction.editReply({ embeds: [embedUtils.error("There has been an error running the command")]});
 
     const currentConfig = await currentConfigRes.json() as AlertConfigDTO;
     const containerState = initContainerState(currentConfig);
-    let container = buildContainer(interaction, containerState);
+    let container = buildContainer(interaction, containerState, currentConfig, roleManagement);
 
     const reply = await interaction.editReply({ flags: MessageFlags.IsComponentsV2, components: [container] })
 
@@ -37,67 +39,39 @@ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction
                 containerState.match.channelId = selectedChannelId;
                 containerState.match.enabled = selectedChannelId !== null
             }
-            
+
             if (componentId.endsWith('result')) {
                 containerState.result.channelId = selectedChannelId;
                 containerState.result.enabled = selectedChannelId !== null
             }
-            
-            if (componentId.endsWith('news')) {
-                containerState.news.channelId = selectedChannelId;
-                containerState.news.enabled = selectedChannelId !== null
-            }
         }
-    
+
         if (componentInteraction.isButton()) {
             if (componentId.endsWith('match-toggle'))
                 containerState.match.enabled = !containerState.match.enabled;
-            
+
             if (componentId.endsWith('result-toggle'))
                 containerState.result.enabled = !containerState.result.enabled;
-            
-            if (componentId.endsWith('news-toggle'))
-                containerState.news.enabled = !containerState.news.enabled;
 
             if(componentId.endsWith('save')) {
                 collector.stop('finished');
 
-                await componentInteraction.editReply({ 
-                    components: [containerUtils.success("Saving config...")] 
+                await componentInteraction.editReply({
+                    components: [containerUtils.success("Saving config...")]
                 });
 
-                let alertRole: Role | undefined;
-                if(currentConfig.alertRoleId === null) {
-                    if(!hasManageRoles(interaction))
-                        return componentInteraction.editReply({ components: [containerUtils.error("**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions")] });
+                // a channel is all a server needs to receive alerts.
+                // The alert role is not part of the config anymore, it exists if (and only if) the role management is enabled
+                const setConfigRes = await alerts.setConfig(interaction.guildId!, {
+                    matchAlertChannelDiscordId: containerState.match.enabled ? containerState.match.channelId : null,
+                    resultAlertChannelDiscordId: containerState.result.enabled ? containerState.result.channelId : null
+                });
 
-                    alertRole = await interaction.guild?.roles.create({
-                        name: "🔴 Alerts",
-                        permissions: [],
-                        colors: {
-                            primaryColor: colorUtils.neturalHex
-                        }
-                    });
-                }
-
-                const newConfigDTO: AlertConfigDTO = {
-                    matchAlertChannelId: containerState.match.enabled ? containerState.match.channelId : null,
-                    resultAlertChannelId: containerState.result.enabled ? containerState.result.channelId : null,
-                    newsAlertChannelId: containerState.news.enabled ? containerState.news.channelId : null,
-                    alertRoleId: alertRole ? alertRole.id : null,
-                }
-
-                const setConfigRes = await alerts.setConfig(interaction.guildId!, newConfigDTO)
-
-                if(setConfigRes.status !== 200) {
-                    if(currentConfig.alertRoleId === null) {
-                        await alertRole?.delete();
-                        return componentInteraction.editReply({ embeds: [embedUtils.error("There has been an error running the command")]});
-                    }
-                }
+                if(setConfigRes.status !== 200)
+                    return componentInteraction.editReply({ components: [containerUtils.error("There has been an error running the command")] });
 
                 const configRes = await setConfigRes.json() as AlertConfigResDTO;
-                const savedContainer = buildSavedContainer(currentConfig, configRes)
+                const savedContainer = buildSavedContainer(currentConfig, configRes, roleManagement)
                 return componentInteraction.editReply({ components: [savedContainer] });
             }
 
@@ -107,10 +81,10 @@ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction
             }
         }
 
-        container = buildContainer(interaction, containerState);
+        container = buildContainer(interaction, containerState, currentConfig, roleManagement);
         await componentInteraction.editReply({ components: [container] });
     });
-    
+
     collector.on('end', async (_, reason) => {
         if(reason === "finished")
             return;
@@ -125,36 +99,29 @@ function initContainerState(currentConfig: AlertConfigDTO): Record<string, Alert
             title: "Match Alerts",
             enabledDesc: "Select the channel you want to receive **match alerts** in",
             disabledDesc: "-# Enable match alerts to select a channel",
-            enabled: currentConfig.matchAlertChannelId !== null,
-            channelId: currentConfig.matchAlertChannelId
+            enabled: currentConfig.matchAlertChannelDiscordId !== null,
+            channelId: currentConfig.matchAlertChannelDiscordId
         },
         result: {
             title: "Result Alerts",
             enabledDesc: "Select the channel you want to receive **result alerts** in",
             disabledDesc: "-# Enable result alerts to select a channel",
-            enabled: currentConfig.resultAlertChannelId !== null,
-            channelId: currentConfig.resultAlertChannelId
-        },
-        news: {
-            title: "News Alerts",
-            enabledDesc: "Select the channel you want to receive **news alerts** in",
-            disabledDesc: "-# Enable news alerts to select a channel",
-            enabled: currentConfig.newsAlertChannelId !== null,
-            channelId: currentConfig.newsAlertChannelId
+            enabled: currentConfig.resultAlertChannelDiscordId !== null,
+            channelId: currentConfig.resultAlertChannelDiscordId
         },
     };
 
     return containerState;
 }
 
-function buildContainer(interaction: ChatInputCommandInteraction, state: Record<string, AlertConfigStateItem>) {
+function buildContainer(interaction: ChatInputCommandInteraction, state: Record<string, AlertConfigStateItem>, currentConfig: AlertConfigDTO, roleManagement: boolean) {
     let container = new ContainerBuilder()
         .setAccentColor(embedUtils.neturalHex)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Alerts configuration"))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small))
 
-        Object.entries(state).forEach(([key, data], index) => {
+        Object.entries(state).forEach(([key, data]) => {
             const subSection = new SectionBuilder()
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${data.title}`))
                 .setButtonAccessory(new ButtonBuilder()
@@ -188,6 +155,9 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Record<
             container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large))
         });
 
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(currentConfig, roleManagement)}`));
+        container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
+
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large));
 
         const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -205,7 +175,15 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Record<
     return container;
 }
 
-function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO) {
+// the alert role only exists if the role management is enabled, otherwise alerts are sent without mentions
+function buildMentionsString(config: AlertConfigDTO, roleManagement: boolean): string {
+    if(roleManagement && config.alertRoleDiscordId !== null)
+        return `<@&${config.alertRoleDiscordId}> is mentioned for every alert\n-# Members can choose their roles with \`/roles\``;
+
+    return `Alerts are sent **without mentions**\n-# Want Greg to mention roles? Enable the role management with \`/settings role-management\``;
+}
+
+function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO, roleManagement: boolean) {
     const { newConfig } = configRes;
 
     const container = new ContainerBuilder()
@@ -214,28 +192,27 @@ function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigRe
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small))
 
-    let matchesTitle = buildTitleString(oldConfig.matchAlertChannelId, newConfig.matchAlertChannelId, "### Match alerts ")
+    let matchesTitle = buildTitleString(oldConfig.matchAlertChannelDiscordId, newConfig.matchAlertChannelDiscordId, "### Match alerts ")
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(matchesTitle))
     addMatchBlock(container, configRes);
 
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large));
 
-    let resultsTitle = buildTitleString(oldConfig.resultAlertChannelId, newConfig.resultAlertChannelId, "### Result alerts ")
+    let resultsTitle = buildTitleString(oldConfig.resultAlertChannelDiscordId, newConfig.resultAlertChannelDiscordId, "### Result alerts ")
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(resultsTitle))
     addResultsBlock(container, configRes);
 
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large));
 
-    let newsTitle = buildTitleString(oldConfig.newsAlertChannelId, newConfig.newsAlertChannelId, "### News alerts ")
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(newsTitle))
-    addNewsBlock(container, configRes);
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(newConfig, roleManagement)}`));
 
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
 
-    if(configRes.matResFilterCount === 0 && configRes.newsFilterCount === 0) {
+    // new servers start with the default filter (hltv covered matches), so this only applies to servers that deleted all of their filters
+    if(configRes.filterCount === 0) {
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large));
-        
-        const miscString = `*Some of these alerts don't interest you?\nCustomize your alerts with \`/filters add\`*`
+
+        const miscString = `*You have no filters, so you get an alert for every single match.\nSome of these alerts don't interest you?\nCustomize your alerts with \`/filters add\`*`
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(miscString))
     }
 
@@ -254,7 +231,7 @@ function buildTitleString(oldVal: string | null, newVal: string | null, partialT
 function addMatchBlock(container: ContainerBuilder, configRes: AlertConfigResDTO) {
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
 
-    if(configRes.newConfig.matchAlertChannelId === null) {
+    if(configRes.newConfig.matchAlertChannelDiscordId === null) {
         const descString = `-# Match alerts are currently not enabled`;
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
     }
@@ -262,7 +239,7 @@ function addMatchBlock(container: ContainerBuilder, configRes: AlertConfigResDTO
         const match = configRes.guildsNextUpcomingMatch;
 
         if(match === null) {
-            if(configRes.matResFilterCount === 0) {
+            if(configRes.filterCount === 0) {
                 const descString = `There are currently **no upcoming matches**\nYou will get an alert as soon as **any next match** is about to start`;
                 container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
             }
@@ -272,86 +249,30 @@ function addMatchBlock(container: ContainerBuilder, configRes: AlertConfigResDTO
             }
         }
         else {
-            const descString = `You will get an alert${configRes.matResFilterCount === 0 ? "": " that matches your filters"} **<t:${GetUnixTimestamp(match.date, match.time)}:R>** for`;
+            const descString = `You will get an alert${configRes.filterCount === 0 ? "": " that matches your filters"} **<t:${GetUnixTimestamp(match.dateTime)}:R>** for`;
             container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
-    
-            const versusString = `[**${match.teamX}** vs **${match.teamY}**](${match.url})`;
+
+            // matches that are not covered by hltv link to the liquipedia page of their event
+            const [teamX, teamY] = [match.teamX?.name ?? "TBD", match.teamY?.name ?? "TBD"];
+            const versusString = `[**${teamX}** vs **${teamY}**](${EscapeLinkUrl(match.hltvUrl ?? match.eventUrl)})\n-# ${match.eventName}`;
             container.addTextDisplayComponents(new TextDisplayBuilder().setContent(versusString));
         }
     }
 }
 
+// the api no longer knows live matches (liquipedia only has upcoming matches and results), so there is no preview of running matches
 function addResultsBlock(container: ContainerBuilder, configRes: AlertConfigResDTO) {
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
 
-    if(configRes.newConfig.resultAlertChannelId === null) {
+    if(configRes.newConfig.resultAlertChannelDiscordId === null) {
         const descString = `-# Result alerts are currently not enabled`;
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
     }
     else {
-        const liveMatches = configRes.guildsLiveMatches;
+        const descString = configRes.filterCount === 0
+            ? `You will get a result alert as soon as **any next match** ends`
+            : `You will get a result alert as soon as the next match that matches your filters ends`;
 
-        if(liveMatches.length === 0) {
-            if(configRes.matResFilterCount === 0) {
-                const descString = `There are currently **no matches live**\nYou will get a result alert as soon as **any next match** ends`;
-                container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
-            }
-            else {
-                const descString = `There are currently **no live games** that match your filters\nYou will get a result alert as soon as the next game ends`;
-                container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
-            }
-        }
-        else {
-            let singular = liveMatches.length <= 1;
-            let matchesStrings: string[] = [];
-            liveMatches.forEach(match => matchesStrings.push(`[**${match.teamX_Name}** ${buildMapDots(match.type, match.teamX_MapScore, false)} [${match.teamX_Score ?? "-"}] - [${match.teamY_Score ?? "-"}] ${buildMapDots(match.type, match.teamY_MapScore, true)} **${match.teamY_Name}**](${match.url})`));
-    
-            let descString = "";
-            if(configRes.matResFilterCount === 0)
-                descString = `There ${singular ? "is" : "are"} currently **${liveMatches.length} ${singular ? "match" : "matches"}** being played out\nYou will get a result alert when ${singular ? "this match ends" : "one of these matches ends"}`;
-            else
-                descString = `There ${singular ? "is" : "are"} currently **${liveMatches.length} live ${singular ? "game" : "games"}** that ${singular ? "matches" : "match"} your filters\nYou will get a result alert when ${singular ? "this match ends" : "one of these matches ends"}`;
-                
-            container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
-    
-            const matchesFullString = matchesStrings.join("\n");
-            container.addTextDisplayComponents(new TextDisplayBuilder().setContent(matchesFullString));
-        }
-    }
-
-    function buildMapDots(matchType: string, mapScore: number | null, reverse: boolean) {
-        const totalMapsMap: Record<string, number> = {
-            'bo1': 1,
-            'bo3': 2,
-            'bo5': 3,
-            'bo7': 4
-        };
-    
-        const totalDots = totalMapsMap[matchType.toLowerCase()] ?? 1;
-        const wins = mapScore ?? 0;
-        let dots = "●".repeat(wins) + "○".repeat(Math.max(0, totalDots - wins));
-    
-        if (reverse)
-            dots = [...dots].reverse().join('');
-    
-        return dots;
-    }
-}
-
-function addNewsBlock(container: ContainerBuilder, configRes: AlertConfigResDTO) {
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
-
-    if(configRes.newConfig.newsAlertChannelId === null) {
-        const descString = `-# News alerts are currently not enabled`;
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
     }
-    else {
-        const descString = `Sadly i can't predict when HLTVs great writers release an article\nYou will get a news alert${configRes.newsFilterCount === 0 ? "" : " that matches your filters"} as soon as an article is published`;
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(descString));
-    }
-}
-
-function hasManageRoles(interaction: CommandInteraction): boolean {
-    const permissions = interaction.guild?.members.me?.permissions;
-    return permissions?.has(PermissionFlagsBits.ManageRoles) ?? false;
 }

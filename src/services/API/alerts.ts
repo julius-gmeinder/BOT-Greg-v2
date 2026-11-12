@@ -1,6 +1,5 @@
-import { config } from "../../config";
-import fetch, { Response } from 'node-fetch-cjs';
-import { AlertConfigDTO } from "../../models";
+import { Response } from 'node-fetch-cjs';
+import { get, query, send } from "./request";
 
 export default {
     getConfig,
@@ -8,23 +7,14 @@ export default {
 }
 
 async function getConfig(guildId: string): Promise<Response> {
-        const res = await fetch(config.API_BASE + `api/Alerts/config?guildId=${guildId}`);
-        return res;
+    return get(`api/Alerts/config${query({ guildDiscordId: guildId })}`);
 }
 
-async function setConfig(guildId: string, configDTO: AlertConfigDTO): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Alerts/config?guildId=${guildId}`, {
-        method: 'POST',
-        headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            matchAlertChannelId: configDTO.matchAlertChannelId,
-            resultAlertChannelId: configDTO.resultAlertChannelId,
-            newsAlertChannelId: configDTO.newsAlertChannelId,
-            alertRoleId: configDTO.alertRoleId
-        })
+// only sets the channels. The alert role is not part of the config anymore,
+// it is created / removed by toggling the role management (see settings.toggleRoleManagement)
+async function setConfig(guildId: string, channels: { matchAlertChannelDiscordId: string | null, resultAlertChannelDiscordId: string | null }): Promise<Response> {
+    return send('POST', `api/Alerts/config${query({ guildDiscordId: guildId })}`, {
+        matchAlertChannelDiscordId: channels.matchAlertChannelDiscordId,
+        resultAlertChannelDiscordId: channels.resultAlertChannelDiscordId
     });
-    return res;
 }

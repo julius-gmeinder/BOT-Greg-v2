@@ -1,154 +1,162 @@
-export type FilterMatRes = {
+export type Filter = {
+    id: string,
     nr: number,
-    roleId: string,
+    // null if the role management of the guild is disabled
+    roleDiscordId: string | null,
     team: string | null,
     event: string | null,
-    eventTier: string | null,
+    // event tiers are numbers in the api: 0 Major, 1 S-Tier, 2 A-Tier, 3 B-Tier, 4 C-Tier
+    eventTier: number | null,
+    eventTierString: string | null,
     vrsRank: number | null,
-    stars: number | null
+    hltvCoverage: boolean | null
 }
 
-export type FilterMatResAdd = {
-    guildId: string,
-    roleId: string,
+export type FilterAdd = {
+    guildDiscordId: string,
+    // only set if the role management of the guild is enabled
+    roleDiscordId: string | null,
     team: string | null,
     event: string | null,
-    eventTier: string | null,
+    eventTier: number | null,
     vrsRank: number | null,
-    stars: number | null,
+    hltvCoverage: boolean | null
 }
 
-export type FilterMatResDelete = {
-    guildId: string,
-    roleIds: Array<string>
+export type FilterDelete = {
+    guildDiscordId: string,
+    filterIds: Array<string>
 }
 
-export type FilterNews = {
-    nr: number,
-    roleId: string,
-    articleType: string
+export type MatchPlayer = {
+    name: string,
+    country: string
 }
 
-export type FilterNewsAdd = {
-    guildId: string,
-    roleId: string,
-    articleType: string
+export type MatchTeam = {
+    name: string,
+    nameShort: string,
+    players: Array<MatchPlayer>
 }
 
-export type FilterNewsDelete = {
-    guildId: string,
-    roleIds: Array<string>
+// platform: 0 Twitch, 1 Youtube, 2 Kick
+export type MatchStream = {
+    platform: number,
+    channel: string,
+    url: string | null
 }
 
-export type Match = {
-    url: string,
-    event: string,
-    eventStage: string | null,
-    type: string,
-    stars: number,
-    teamX: string,
-    teamY: string,
-    date: string,
-    time: string
+export type MatchBase = {
+    matchId: string,
+    eventId: number,
+    eventName: string,
+    eventRelUrl: string,
+    eventUrl: string,
+    // utc, serialized without offset
+    dateTime: string,
+    bestOf: number,
+    environment: string,
+    stage: string | null,
+    lpTier: string,
+    valveTier: string,
+    tier: number | null,
+    tierString: string | null,
+    hltvUrl: string | null,
+    faceitUrl: string | null,
+    isHltvCovered: boolean,
+    // only null for matches with unknown teams (TBD), those are never alerted
+    teamX: MatchTeam | null,
+    teamY: MatchTeam | null
 }
 
-export type LiveMatch = {
-    url: string,
-    event: string,
-    eventStage: string | null,
-    type: string,
-    stars: number,
-    teamX_Name: string,
-    teamX_Score: number | null,
-    teamX_MapScore: number | null,
-    teamY_Name: string,
-    teamY_Score: number | null,
-    teamY_MapScore: number | null,
+export type Match = MatchBase & {
+    streams: Array<MatchStream>
 }
 
-export type Result = {
-    url: string,
-    event: string,
-    type: string,
-    stars: number,
-    teamX_Name:string,
-    teamX_Score:number,
-    teamY_Name:string,
-    teamY_Score:number,
-    date: string,
-    time: string
+export type ResultMap = {
+    name: string,
+    teamXScore: number | null,
+    teamYScore: number | null,
+    mapPlayed: boolean
 }
 
-export type News = {
-    url: string,
-    headline: string,
-    isFeatured: boolean,
-    isShort: boolean,
-    newsPage: {
-        date: string,
-        time: string,
-        description: string | null,
-        imageLocation: string | null,
-        eventName: string | null
-    }
+export type Result = MatchBase & {
+    teamXMapScore: number,
+    teamYMapScore: number,
+    isForfeit: boolean,
+    maps: Array<ResultMap>
 }
 
 export type MatchAlert = {
     match: Match,
     guilds: Array<{
-        channelId: string,
-        roleIds: Array<string>
+        channelDiscordId: string,
+        roleDiscordIds: Array<string>
     }>
 }
 
 export type MatchDelay = {
     match: Match,
     guilds: Array<{
-        channelId: string,
+        channelDiscordId: string,
         mentionOnDelays: boolean,
-        roleIds: Array<string>
+        roleDiscordIds: Array<string>
     }>
 }
 
 export type ResultAlert = {
     result: Result,
     guilds: Array<{
-        channelId: string,
+        channelDiscordId: string,
         mentionOnResults: boolean,
         censorResults: boolean,
-        roleIds: Array<string>
+        roleDiscordIds: Array<string>
     }>
 }
 
-export type NewsAlert = {
-    news: News,
-    guilds: Array<{
-        channelId: string,
-        mentionOnNews: boolean,
-        alwaysShowNewsImage: boolean,
-        roleIds: Array<string>
-    }>
+export type GuildSettings = {
+    alertsPaused: boolean,
+    mentionOnDelays: boolean,
+    mentionOnResults: boolean,
+    censorResults: boolean,
+    roleManagement: boolean
 }
 
 export type ToggleSetting = {
-    guildId: string,
+    guildDiscordId: string,
     newValue: boolean
 }
 
+export type ToggleRoleManagement = {
+    guildDiscordId: string,
+    newValue: boolean,
+    // the roles are only needed to enable the role management
+    alertRoleDiscordId?: string,
+    filterRoles?: Array<{
+        filterId: string,
+        roleDiscordId: string
+    }>
+}
+
+export type ToggleRoleManagementRes = {
+    roleManagement: boolean,
+    roleDiscordIdsToDelete: Array<string>
+}
+
 export type RoleLink = {
-    botRoleId: string,
-    linkedRoleId: string,
-    guildId: string
+    botRoleDiscordId: string,
+    linkedRoleDiscordId: string,
+    guildDiscordId: string
 }
 
 export type RoleUnlink = {
-    botRoleId: string,
-    linkedRoleId: string
+    botRoleDiscordId: string,
+    linkedRoleDiscordId: string
 }
 
 export type RoleLinksTreeItem = {
-    botRoleId: string,
-    linkedRoleIds: string[]
+    botRoleDiscordId: string,
+    linkedRoleDiscordIds: string[]
 }
 
 export type CommandInfo = {
@@ -160,7 +168,6 @@ export type CommandInfo = {
 export type GuildData = {
     id: string,
     name: string,
-    owner: string,
     memberCount: number
 }
 
@@ -175,18 +182,16 @@ export type AutocompleteIntDTO = {
 }
 
 export type AlertConfigDTO = {
-    matchAlertChannelId: string | null,
-    resultAlertChannelId: string | null,
-    newsAlertChannelId: string | null,
-    alertRoleId: string | null
+    matchAlertChannelDiscordId: string | null,
+    resultAlertChannelDiscordId: string | null,
+    // null if the role management is disabled. Never sent by the bot, the role is set by toggling the role management
+    alertRoleDiscordId: string | null
 }
 
 export type AlertConfigResDTO = {
     newConfig: AlertConfigDTO,
-    matResFilterCount: number,
-    newsFilterCount: number,
-    guildsNextUpcomingMatch: Match | null,
-    guildsLiveMatches: Array<LiveMatch>
+    filterCount: number,
+    guildsNextUpcomingMatch: Match | null
 }
 
 export type AlertConfigStateItem = {

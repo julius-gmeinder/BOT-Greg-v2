@@ -1,9 +1,18 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, CommandInteraction, ComponentType, EmbedBuilder, GuildMemberRoleManager, MessageFlags, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuInteraction, StringSelectMenuOptionBuilder } from "discord.js";
 import roles from "../../services/API/roles";
 import links from "../../services/API/links";
+import { readErrorCode } from "../../services/API/request";
+import settings from "../../services/API/settings";
 import embeds from "../../utils/embedUtils";
+import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleLink(interaction: CommandInteraction) {
+    // role links only exist with role management, without it the bot has no roles that could be linked
+    const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
+
+    if(roleManagement === false)
+        return interaction.reply({ embeds: [embeds.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+
     const res = await roles.getRoles(interaction.guildId!);
 
     if(res.status !== 200)
@@ -101,9 +110,9 @@ export async function roleLink(interaction: CommandInteraction) {
         if(buttonInteraction.customId == "link") {
 
             const res = await links.link({
-                botRoleId: selectedBotRoleId, 
-                linkedRoleId: selectedLinkedRoleId,
-                guildId: interaction.guild!.id
+                botRoleDiscordId: selectedBotRoleId,
+                linkedRoleDiscordId: selectedLinkedRoleId,
+                guildDiscordId: interaction.guild!.id
             });
 
             if(res.status === 204) {
@@ -116,9 +125,13 @@ export async function roleLink(interaction: CommandInteraction) {
                 return buttonInteraction.update({embeds: [embed], components: []});
             }
 
-            if (res.status === 409) {   
-                const data = await res.json();
-        
+            if (res.status === 409) {
+                const data = await readErrorCode(res);
+
+                // the role management was disabled while the command was running
+                if(data === "roleManagement")
+                    return buttonInteraction.update({embeds: [embeds.neutral(roleManagementDisabledMessage)], components: []});
+
                 if(data === "limit")
                     return buttonInteraction.update({embeds: [embeds.error("You have reached the maximum amount of links (20) for this server")], components: []});
         

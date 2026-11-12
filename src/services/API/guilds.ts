@@ -1,6 +1,6 @@
-import { config } from "../../config";
-import fetch, { Response } from 'node-fetch-cjs';
+import { Response } from 'node-fetch-cjs';
 import { GuildData } from "../../models";
+import { query, send } from "./request";
 
 export default {
     add,
@@ -10,55 +10,26 @@ export default {
 }
 
 async function add(guild: GuildData): Promise<void> {
-    await fetch(config.API_BASE + `api/Guilds`, {
-        method: 'POST',
-        headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guild.id,
-            guildName: guild.name,
-            guildOwner: guild.owner,
-            guildMemberCount: guild.memberCount,
-        })
-    });
+    await send('POST', `api/Guilds`, toDto(guild));
 }
 
 async function remove(guildId: string): Promise<void> {
-    await fetch(config.API_BASE + `api/Guilds?guildId=${guildId}`, {
-        method: 'DELETE',
-        headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-        }
-    });
+    await send('DELETE', `api/Guilds${query({ guildDiscordId: guildId })}`);
 }
 
+// the response contains the role ids, that have to be deleted in discord
 async function reset(guildId: string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Guilds/reset?guildId=${guildId}`, {
-        method: 'PUT',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
-    });
-    return res;
+    return send('PUT', `api/Guilds/reset${query({ guildDiscordId: guildId })}`);
 }
 
 async function sync(guildData: Array<GuildData>): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Guilds/sync`, {
-        method: 'POST',
-        headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(guildData.map(guild => ({
-            guildId: guild.id,
-            guildName: guild.name,
-            guildOwner: guild.owner,
-            guildMemberCount: guild.memberCount
-        })))
-    });
-    return res;
+    return send('POST', `api/Guilds/sync`, guildData.map(toDto));
+}
+
+function toDto(guild: GuildData) {
+    return {
+        guildDiscordId: guild.id,
+        guildName: guild.name,
+        guildMemberCount: guild.memberCount
+    };
 }

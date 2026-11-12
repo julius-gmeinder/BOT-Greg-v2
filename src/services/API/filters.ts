@@ -1,6 +1,6 @@
-import { config } from "../../config";
-import { FilterMatResAdd, FilterMatResDelete } from "../../models";
-import fetch, { Response } from 'node-fetch-cjs';
+import { FilterAdd, FilterDelete } from "../../models";
+import { Response } from 'node-fetch-cjs';
+import { get, query, send } from "./request";
 
 export default {
     getFilters,
@@ -10,46 +10,29 @@ export default {
 }
 
 async function getFilters(guildId: string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/FiltersMatRes?guildId=${guildId}`);
-    return res;
+    return get(`api/Filters${query({ guildDiscordId: guildId })}`);
 }
 
 async function getFilterRoleIds(guildId: string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/FiltersMatRes/roles?guildId=${guildId}`);
-    return res;
+    return get(`api/Filters/roles${query({ guildDiscordId: guildId })}`);
 }
 
-async function add({guildId, roleId, team, event, eventTier, vrsRank, stars}: FilterMatResAdd): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/FiltersMatRes`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            roleId: roleId,
-            team: team,
-            event: event,
-            eventTier: eventTier,
-            vrsRank: vrsRank,
-            stars: stars,
-        })
+async function add(filter: FilterAdd): Promise<Response> {
+    return send('POST', `api/Filters`, {
+        guildDiscordId: filter.guildDiscordId,
+        roleDiscordId: filter.roleDiscordId,
+        team: filter.team,
+        event: filter.event,
+        eventTier: filter.eventTier,
+        vrsRank: filter.vrsRank,
+        hltvCoverage: filter.hltvCoverage
     });
-    return res;
 }
 
-async function remove({guildId, roleIds}: FilterMatResDelete): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/FiltersMatRes`, {
-        method: 'DELETE',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            guildId: guildId,
-            roleIds: roleIds
-        })
+// the response contains the role ids, that have to be deleted in discord
+async function remove({guildDiscordId, filterIds}: FilterDelete): Promise<Response> {
+    return send('DELETE', `api/Filters`, {
+        guildDiscordId: guildDiscordId,
+        filterIds: filterIds
     });
-    return res;
 }

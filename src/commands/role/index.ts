@@ -5,12 +5,12 @@ import { roleList } from "./list";
 
 export const data = new SlashCommandBuilder()
     .setName("role")
-    .setDescription("All role subcommands (role links and unlinks)")
+    .setDescription("All role subcommands (role links and unlinks), requires /settings role-management")
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(subcommand => subcommand
         .setName("link")
-        .setDescription("Link your own roles to the bots roles, they will be mentioned too when a match is about to go live!")
+        .setDescription("Link your own roles to the bots roles, they will be mentioned too when an alert is sent!")
     )
     .addSubcommand(subcommand => subcommand
         .setName("unlink")

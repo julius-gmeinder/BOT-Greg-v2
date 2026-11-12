@@ -6,7 +6,7 @@ export async function mentionOnDelays(interaction: ChatInputCommandInteraction) 
     const newValue = interaction.options.getBoolean("value");
 
     const res = await settings.toggleMentionOnDelays({
-        guildId: interaction.guildId!,
+        guildDiscordId: interaction.guildId!,
         newValue: newValue!
     });
 

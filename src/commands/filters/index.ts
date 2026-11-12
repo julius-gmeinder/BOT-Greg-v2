@@ -1,8 +1,7 @@
 import { ChatInputCommandInteraction, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import { filtersDelete } from "./delete";
 import { filtersList } from "./list";
-import { filtersAddMatRes } from "./add/matches-and-results";
-import { filtersAddNews } from "./add/news";
+import { filtersAdd } from "./add";
 
 export const data = new SlashCommandBuilder()
     .setName("filters")
@@ -17,58 +16,40 @@ export const data = new SlashCommandBuilder()
         .setName("list")
         .setDescription("A list of all your servers filters")
     )
-    .addSubcommandGroup(group => group
+    .addSubcommand(subcommand => subcommand
         .setName("add")
-        .setDescription("Add a filter to customize the alerts your server receives")
-        .addSubcommand(subcommand => subcommand
-            .setName("matches-and-results")
-            .setDescription("Add a filter for match and result alerts")
-            .addStringOption(option =>
-                option.setName('team')
-                    .setDescription(`Filter alerts by team`)
-                    .setRequired(false)
-                    .setAutocomplete(true))
-            .addStringOption(option =>
-                option.setName('event')
-                    .setDescription(`Filter alerts by event`)
-                    .setRequired(false)
-                    .setAutocomplete(true))
-            .addStringOption(option =>
-                option.setName('event-tier')
-                    .setDescription(`Filter alerts with liquipedias event tiers`)
-                    .setRequired(false)
-                    .setAutocomplete(true))
-            .addIntegerOption(option =>
-                option.setName('vrs-rank')
-                    .setDescription(`Filter alerts by VRS rank`)
-                    .setRequired(false)
-                    .setAutocomplete(true))
-            .addIntegerOption(option =>
-                option.setName('stars')
-                    .setDescription(`Filter alerts with HLTVs star rating`)
-                    .setRequired(false)
-                    .setAutocomplete(true)))
-        .addSubcommand(subcommand => subcommand
-            .setName("news")
-            .setDescription("Add a filter for news alerts")
-            .addStringOption(option =>
-                option.setName('article-type')
-                    .setDescription(`Filter alerts by article type`)
-                    .setRequired(true)
-                    .setAutocomplete(true)))
+        .setDescription("Add a filter to customize the match and result alerts your server receives")
+        .addStringOption(option =>
+            option.setName('team')
+                .setDescription(`Filter alerts by team`)
+                .setRequired(false)
+                .setAutocomplete(true))
+        .addStringOption(option =>
+            option.setName('event')
+                .setDescription(`Filter alerts by event`)
+                .setRequired(false)
+                .setAutocomplete(true))
+        .addIntegerOption(option =>
+            option.setName('event-tier')
+                .setDescription(`Filter alerts with liquipedias event tiers (the selected tier and above)`)
+                .setRequired(false)
+                .setAutocomplete(true))
+        .addIntegerOption(option =>
+            option.setName('vrs-rank')
+                .setDescription(`Filter alerts by VRS rank (both teams have to be ranked within the top x)`)
+                .setRequired(false)
+                .setAutocomplete(true))
+        .addBooleanOption(option =>
+            option.setName('hltv-coverage')
+                .setDescription(`True: only matches covered by HLTV, False: only matches not covered by HLTV`)
+                .setRequired(false))
     );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-    const subcommandGroup = interaction.options.getSubcommandGroup();
     const subcommand = interaction.options.getSubcommand();
 
-    if(subcommandGroup === "add") {
-        if(subcommand === "matches-and-results")
-            await filtersAddMatRes(interaction);
-
-        if(subcommand === "news")
-            await filtersAddNews(interaction);
-    }
+    if(subcommand === "add")
+        await filtersAdd(interaction);
 
     if(subcommand === "delete")
         await filtersDelete(interaction);

@@ -1,38 +1,33 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, MessageFlags, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
-import filtersMatRes from "../../services/API/filtersMatRes";
+import filters from "../../services/API/filters";
 import embeds from "../../utils/embedUtils";
-import embedUtils from "../../utils/embedUtils";
-import filtersNews from "../../services/API/filtersNews";
+import { Filter } from "../../models";
+import { BuildFilterLabel, BuildFilterName } from "../../utils/filterUtils";
+import { DeleteRoles, HasHigherRole, HasManageRoles, missingHigherRoleMessage, missingManageRolesMessage } from "../../utils/roleUtils";
 
 export async function filtersDelete(interaction: ChatInputCommandInteraction) {
-    const filtersMatResRes = await filtersMatRes.getFilterRoleIds(interaction.guildId!);
-    const filtersNewsRes = await filtersNews.getFilterRoleIds(interaction.guildId!);
+    const filtersRes = await filters.getFilters(interaction.guildId!);
 
-    if(filtersMatResRes.status !== 200 && filtersNewsRes.status !== 200)
+    if(filtersRes.status !== 200)
         return interaction.reply({ embeds: [embeds.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral] });
 
-    const matResRoleIds = await filtersMatResRes.json() as string[];
-    const newsRoleIds = await filtersNewsRes.json() as string[];
-    const allRoleIds = matResRoleIds.concat(newsRoleIds);
+    const allFilters = await filtersRes.json() as Filter[];
 
-    if(allRoleIds.length === 0)
+    if(allFilters.length === 0)
         return interaction.reply({ embeds: [embeds.error("There are currently no filters on your server")], flags: [MessageFlags.Ephemeral] });
 
-    if(CheckPermissions(interaction, allRoleIds)) 
-        return interaction.reply({ embeds: [embeds.error("Insufficient Permissions. Please check the bots permissions.\nAlso make sure that one of the bots roles is above all of the filter roles")], flags: [MessageFlags.Ephemeral] });
-
+    // filters are identified by their id, as they only have a role if the role management is enabled
     const select = new StringSelectMenuBuilder()
         .setCustomId(interaction.id)
         .setPlaceholder('Select filters to delete')
-        .setMinValues(0)
-        .setMaxValues(allRoleIds.length);
+        .setMinValues(1)
+        .setMaxValues(allFilters.length);
 
-    allRoleIds.forEach(async (id: string) => {
-        const role = interaction.guild?.roles.cache.get(id);
+    allFilters.forEach((filter: Filter) => {
         select.addOptions(
             new StringSelectMenuOptionBuilder()
-                .setLabel(role?.name ?? id)
-                .setValue(id)
+                .setLabel(BuildFilterLabel(filter))
+                .setValue(filter.id)
         );
     });
 
@@ -46,82 +41,95 @@ export async function filtersDelete(interaction: ChatInputCommandInteraction) {
 
     const reply = await interaction.reply({ embeds: [embed], components: [row], flags: [MessageFlags.Ephemeral] });
 
-    const selectCollector = await reply.createMessageComponentCollector({
+    const selectCollector = reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
         time: 30_000,
+        max: 1,
         filter: i => i.user.id === interaction.user.id && i.customId == interaction.id
     });
 
     selectCollector.on("collect", async (selectInteraction) => {
-        const selectedIds = selectInteraction.values;
+        const selectedFilters = allFilters.filter(filter => selectInteraction.values.includes(filter.id));
+        const selectedRoleIds = selectedFilters.filter(filter => filter.roleDiscordId !== null).map(filter => filter.roleDiscordId!);
 
-        const embed = new EmbedBuilder()
+        // permissions are only needed if roles have to be deleted (role management enabled)
+        if(selectedRoleIds.length > 0) {
+            if(!HasManageRoles(interaction.guild)) {
+                await selectInteraction.update({ embeds: [embeds.error(missingManageRolesMessage)], components: [] });
+                return;
+            }
+
+            if(!HasHigherRole(interaction.guild, selectedRoleIds)) {
+                await selectInteraction.update({ embeds: [embeds.error(missingHigherRoleMessage)], components: [] });
+                return;
+            }
+        }
+
+        let description = "Do you really want to delete the following filters?";
+
+        if(selectedRoleIds.length > 0)
+            description += "\nTheir roles (and the links of these roles) will be deleted too";
+
+        // a guild without filters gets every match liquipedia knows
+        if(selectedFilters.length === allFilters.length)
+            description += "\n\n⚠️ **These are all of your filters.** Without filters you will get an alert for **every** match and result, which is a lot more than HLTV covers";
+
+        const confirmEmbed = new EmbedBuilder()
             .setColor(embeds.errorHex)
             .setTitle("Delete filters?")
-            .setDescription("Do you really want to delete the following filters?")
+            .setDescription(description)
             .setTimestamp()
-            .addFields({name: "🗑️ **Selected filters**", value: selectedIds.map(id => `<@&${id}>`).join("\n")});
+            .addFields({
+                name: "🗑️ **Selected filters**",
+                value: selectedFilters.map(filter => `**${filter.nr}** ➖ ${BuildFilterName(filter)}${filter.roleDiscordId ? ` (<@&${filter.roleDiscordId}>)` : ""}`).join("\n").slice(0, 1024)
+            });
 
-        const buttonReply = await selectInteraction.update({ embeds: [embed], components: [BuildActionRow()]});
+        await selectInteraction.update({ embeds: [confirmEmbed], components: [BuildActionRow()]});
 
         const buttonCollector = reply.createMessageComponentCollector({
             componentType: ComponentType.Button,
             time: 30_000,
+            max: 1,
             filter: i => i.user.id === interaction.user.id
         });
 
         buttonCollector.on("collect", async (buttonInteraction: ButtonInteraction) => {
             if(buttonInteraction.customId == "delete") {
-                const matResRes = await filtersMatRes.remove({guildId: interaction.guildId!, roleIds: selectedIds})
-                const newsRes = await filtersNews.remove({guildId: interaction.guildId!, roleIds: selectedIds})
+                const res = await filters.remove({ guildDiscordId: interaction.guildId!, filterIds: selectedFilters.map(filter => filter.id) });
 
-                if(matResRes.status !== 200 && newsRes.status !== 200)
-                    return buttonInteraction.update({embeds: [embedUtils.error("There has been an error running the command")], components: []});
+                if(res.status !== 200) {
+                    await buttonInteraction.update({embeds: [embeds.error("There has been an error running the command")], components: []});
+                    return;
+                }
 
-                // Just delete in both tables, shouldnt matter as the roleIds are unique => theyll just be ignored in the table where they dont exist
-                const matResDeletedRoleIds: string[] = await matResRes.json() as string[];
-                const newsDeletedRoleIds: string[] = await newsRes.json() as string[];
-                const allDeletedRoleIds = matResDeletedRoleIds.concat(newsDeletedRoleIds);
+                // roles of the deleted filters (empty if the role management is disabled)
+                const roleIdsToDelete = await res.json() as string[];
+                await DeleteRoles(interaction.guild, roleIdsToDelete);
 
-                allDeletedRoleIds.forEach(async (roleId: string) => {
-                    if(roleId !== null) {
-                        const role = await interaction.guild?.roles.cache.get(roleId);
-                        await role?.delete();
-                    }
-                });
-                
-                const embed = new EmbedBuilder()
+                const deletedEmbed = new EmbedBuilder()
                     .setColor(embeds.errorHex)
                     .setTitle("Filters deleted")
                     .setDescription("The selected filters have been deleted successfully")
                     .setTimestamp()
 
-                return buttonInteraction.update({embeds: [embed], components: []});
+                await buttonInteraction.update({embeds: [deletedEmbed], components: []});
+                return;
             }
-    
+
             if(buttonInteraction.customId == "cancel")
-                return buttonInteraction.update({embeds: [embedUtils.neutral("None of your filters have been deleted")], components: []});
+                await buttonInteraction.update({embeds: [embeds.neutral("None of your filters have been deleted")], components: []});
         });
-    
+
         buttonCollector.on("end", async (collected) => {
             if(collected.size === 0)
-            await buttonReply.edit({embeds: [embedUtils.neutral("No button was pressed. None of your filters have been deleted")], components: []});
+                await interaction.editReply({embeds: [embeds.neutral("No button was pressed. None of your filters have been deleted")], components: []});
         });
     });
 
     selectCollector.on("end", async (collected) => {
         if(collected.size === 0)
-            await reply.edit({ embeds:[embeds.neutral("No filters were selected. None of your filters have been deleted")], components:[] });
+            await interaction.editReply({ embeds:[embeds.neutral("No filters were selected. None of your filters have been deleted")], components:[] });
     });
-}
-
-function CheckPermissions(interaction: ChatInputCommandInteraction, roleIds: string[]): boolean {
-    const highestBotRole = interaction.guild!.members.me!.roles.highest;
-    roleIds.forEach(id => {
-        if(interaction.guild!.roles.cache.get(id)!.position > highestBotRole.position)
-            return true;
-    });
-    return false;
 }
 
 function BuildActionRow() {

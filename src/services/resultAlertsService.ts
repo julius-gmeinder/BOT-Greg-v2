@@ -1,57 +1,59 @@
-import { Client, Embed, EmbedBuilder, TextChannel } from "discord.js";
-import { ResultAlert } from "../models";
+import { Client, EmbedBuilder, TextChannel } from "discord.js";
+import { Result, ResultAlert } from "../models";
 import embeds from "../utils/embedUtils";
-import { BuildAttachment, BuildRolesString, BuildStarsString } from "./helpers/alertsHelper";
+import { ApplyMatchSource, BuildMatchFields, BuildMatchFiles, BuildRolesString } from "./helpers/alertsHelper";
 
 export default async function SendResultAlerts(client: Client<boolean>, resultAlerts: ResultAlert[]) {
     resultAlerts.forEach((resultAlert: ResultAlert) => {
-        const { url, event, type, stars, teamX_Name, teamX_Score, teamY_Name, teamY_Score } = resultAlert.result;
+        const { result } = resultAlert;
+        const { teamXMapScore, teamYMapScore, isForfeit } = result;
+
+        const teamXName = result.teamX?.name ?? "TBD";
+        const teamYName = result.teamY?.name ?? "TBD";
+
+        let outcome = `🤝 The match ended in a draw`;
+        if(teamXMapScore !== teamYMapScore)
+            outcome = `🏆 ${teamXMapScore > teamYMapScore ? teamXName : teamYName} won the match${isForfeit ? " by forfeit" : ""}`;
 
         const embed = new EmbedBuilder()
             .setColor(embeds.successHex)
-            .setTitle(`${teamX_Name} [ ${teamX_Score} ] - [ ${teamY_Score} ] ${teamY_Name}`)
-            .setDescription(`🏆 ${teamX_Score > teamY_Score ? teamX_Name : teamY_Name} won the match\n\u200b`)
-            .setAuthor({ name: 'hltv.org', iconURL: `attachment://hltv.png`, url: url })
-            .setURL(url)
+            .setTitle(`${teamXName} [ ${teamXMapScore} ] - [ ${teamYMapScore} ] ${teamYName}`)
+            .setDescription(`${outcome}\n\u200b`)
             .setTimestamp();
 
         const censoredEmbed = new EmbedBuilder()
             .setColor(embeds.successHex)
-            .setTitle(`${teamX_Name} [ ? ] - [ ? ] ${teamY_Name}`)
+            .setTitle(`${teamXName} [ ? ] - [ ? ] ${teamYName}`)
             .setDescription(`⏱️ The match has ended\n\u200b`)
-            .setAuthor({ name: 'hltv.org', iconURL: `attachment://hltv.png`, url: url })
-            .setURL(url)
             .setTimestamp();
 
-        const starsField = { name: 'Stars ', value: `${BuildStarsString(stars)} `, inline: true}
+        ApplyMatchSource(embed, result);
+        ApplyMatchSource(censoredEmbed, result);
 
-        const remainingFields = [
-            { name: 'Event ', value: `${event} `, inline: true},
-            { name: ["bo3", "bo5", "bo7"].includes(type) ? 'Format' : 'Map', value: `${type}`, inline: true},
-            { name: '\u200b', value: `**[Matchpage](${url})**`} 
-        ]
+        const fields = BuildMatchFields(result);
+        const mapsString = BuildMapsString(result);
 
-        if (stars > 0) {
-            embed.addFields(starsField);
-            censoredEmbed.addFields(starsField);
-        }
+        // the round scores would spoil the result, so they are only part of the uncensored embed
+        if(mapsString !== null)
+            embed.addFields({ name: 'Maps', value: mapsString });
 
-        embed.addFields(remainingFields)
-        censoredEmbed.addFields(remainingFields)
+        embed.addFields(fields);
+        censoredEmbed.addFields(fields);
 
         resultAlert.guilds.forEach(async (guild) => {
-            const channel = client.channels.cache.get(guild.channelId) as TextChannel;
+            const channel = client.channels.cache.get(guild.channelDiscordId) as TextChannel;
 
             if(!channel)
                 return;
-            
-            await channel.send({ 
-                content: guild.mentionOnResults ? BuildRolesString(guild.roleIds) : "",
-                files: [BuildAttachment()],
+
+            await channel.send({
+                // no roles (disabled role management) => no mention, regardless of the setting
+                content: guild.mentionOnResults ? BuildRolesString(guild.roleDiscordIds) : undefined,
+                files: BuildMatchFiles(result),
                 embeds: [guild.censorResults ? censoredEmbed : embed]
             }).catch(async (err) => {
                 console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-                await channel.send({ 
+                await channel.send({
                     embeds: [embeds.error(
                         `There has been an error sending out a result alert\n
                         Try revising the bots permissions, reinvite Greg or reset your servers configuration.\n\n
@@ -61,4 +63,13 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
             });
         });
     });
+}
+
+// e. g. "Mirage 13 - 9", only maps that were actually played
+function BuildMapsString(result: Result): string | null {
+    const maps = result.maps
+        .filter(map => map.mapPlayed)
+        .map(map => `${map.name} **${map.teamXScore} - ${map.teamYScore}**`);
+
+    return maps.length > 0 ? maps.join("\n") : null;
 }

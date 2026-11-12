@@ -1,17 +1,17 @@
-import { config } from "../../config";
-import fetch, { Response } from 'node-fetch-cjs';
+import { Response } from 'node-fetch-cjs';
+import { get, query } from "./request";
 
 export default {
     getRoles,
     getDefaultRole
 }
 
+// all roles managed by the bot (alert role + filter roles), empty if the role management is disabled
 async function getRoles(guildId: string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Roles?guildId=${guildId}`);
-    return res;
+    return get(`api/Roles${query({ guildDiscordId: guildId })}`);
 }
 
+// 404 if the role management is disabled
 async function getDefaultRole(guildId: string): Promise<Response> {
-    const res = await fetch(config.API_BASE + `api/Roles/default?guildId=${guildId}`);
-    return res;
+    return get(`api/Roles/default${query({ guildDiscordId: guildId })}`);
 }
