@@ -1,8 +1,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, CommandInteraction, ComponentType, EmbedBuilder, GuildMemberRoleManager, MessageFlags, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuInteraction, StringSelectMenuOptionBuilder } from "discord.js";
-import roles from "../../services/API/roles";
-import links from "../../services/API/links";
-import { readErrorCode } from "../../services/API/request";
-import settings from "../../services/API/settings";
+import roles from "../../services/api/roles";
+import links from "../../services/api/links";
+import { readErrorCode } from "../../services/api/request";
+import settings from "../../services/api/settings";
 import embeds from "../../utils/embedUtils";
 import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 

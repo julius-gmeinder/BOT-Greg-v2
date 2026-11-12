@@ -1,6 +1,6 @@
 import { ActionRowBuilder, CommandInteraction, ComponentType, EmbedBuilder, GuildMemberRoleManager, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
-import roles from "../../services/API/roles";
-import settings from "../../services/API/settings";
+import roles from "../../services/api/roles";
+import settings from "../../services/api/settings";
 import embeds from "../../utils/embedUtils";
 import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 

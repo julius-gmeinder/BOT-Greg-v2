@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
-import settings from "../../services/API/settings"
+import settings from "../../services/api/settings"
 import embeds from "../../utils/embedUtils";
 
 export async function censorResults(interaction: ChatInputCommandInteraction) {

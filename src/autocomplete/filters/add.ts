@@ -1,5 +1,5 @@
 import { AutocompleteInteraction } from "discord.js";
-import autocomplete from "../../services/API/autocomplete";
+import autocomplete from "../../services/api/autocomplete";
 import { AutocompleteDTO, AutocompleteIntDTO } from "../../models";
 
 export async function autocompleteFiltersAdd(interaction: AutocompleteInteraction) {

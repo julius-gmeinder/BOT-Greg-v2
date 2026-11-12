@@ -1,7 +1,7 @@
 import { ActivityType, Client, GatewayIntentBits, Events } from "discord.js";
 import { commands } from "./commands";
 import { config } from "./config";
-import guilds from "./services/API/guilds";
+import guilds from "./services/api/guilds";
 import SendMatchAlerts from "./services/matchAlertsService";
 import SendMatchDelays from "./services/matchDelaysService";
 import SendResultAlerts from "./services/resultAlertsService";
@@ -30,7 +30,8 @@ client.once(Events.ClientReady, async () => {
         memberCount: guild.memberCount
     }));
 
-    await guilds.sync(guildData);
+    await guilds.sync(guildData)
+        .catch((err) => console.log(`[guilds] [error] unable to sync guilds with the api. ${err}`));
 
     client.user?.setPresence({
         activities: [{ 
@@ -50,12 +51,13 @@ client.on(Events.GuildCreate, async (guild) => {
         id: guild.id,
         name: guild.name,
         memberCount: guild.memberCount
-    });
+    }).catch((err) => console.log(`[guilds] [error] unable to add ${guild.name} (${guild.id}). ${err}`));
 });
 
 client.on(Events.GuildDelete, async (guild) => {
     console.log(`[guilds] left ${guild.name} (${guild.id}) with ${guild.memberCount} members`);
-    await guilds.remove(guild.id);
+    await guilds.remove(guild.id)
+        .catch((err) => console.log(`[guilds] [error] unable to remove ${guild.name} (${guild.id}). ${err}`));
 });
 
 client.on(Events.InteractionCreate, async (interaction: any) => {

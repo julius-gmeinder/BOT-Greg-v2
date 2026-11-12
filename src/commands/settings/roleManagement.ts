@@ -1,8 +1,8 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, MessageFlags, Role } from "discord.js";
-import settings from "../../services/API/settings";
-import filters from "../../services/API/filters";
-import roles from "../../services/API/roles";
-import { readErrorCode } from "../../services/API/request";
+import settings from "../../services/api/settings";
+import filters from "../../services/api/filters";
+import roles from "../../services/api/roles";
+import { readErrorCode } from "../../services/api/request";
 import embeds from "../../utils/embedUtils";
 import { Filter, ToggleRoleManagementRes } from "../../models";
 import { BuildFilterRoleName } from "../../utils/filterUtils";
@@ -91,8 +91,8 @@ async function enableAsync(interaction: ChatInputCommandInteraction) {
             .setTimestamp()
             .setDescription(
                 `Greg now mentions roles when he sends an alert\n\n` +
-                `🔴 <@&${alertRole.id}> is mentioned for every alert\n` +
-                (filterRoles.length > 0 ? `⭕ Every filter got its own role, which is mentioned if the filter matches\n${filterRoles.map(x => `<@&${x.roleDiscordId}>`).join("\n")}\n` : "") +
+                `<@&${alertRole.id}> is mentioned for every alert\n\n` +
+                (filterRoles.length > 0 ? `Every filter got its own role, which is mentioned if the filter matches\n${filterRoles.map(x => `<@&${x.roleDiscordId}>`).join("\n")}\n` : "") +
                 `\n*Members can choose their roles with \`/roles\`\nYou can link your own roles to them with \`/role link\`*`
             );
 

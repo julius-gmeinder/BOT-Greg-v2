@@ -1,5 +1,5 @@
 import { CommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
-import filters from "../../services/API/filters";
+import filters from "../../services/api/filters";
 import { Filter } from "../../models";
 import embedUtils from "../../utils/embedUtils";
 import { BuildFilterField, IsDefaultFilter } from "../../utils/filterUtils";

@@ -1,8 +1,8 @@
 import { CommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
 import embedUtils from "../../utils/embedUtils";
-import links from "../../services/API/links";
+import links from "../../services/api/links";
 import { RoleLinksTreeItem } from "../../models";
-import settings from "../../services/API/settings";
+import settings from "../../services/api/settings";
 import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleList(interaction: CommandInteraction) {

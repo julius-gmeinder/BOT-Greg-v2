@@ -1,12 +1,13 @@
 {
-  "name": "bot-greg",
-  "version": "1.0.0",
+  "name": "bot-greg-v2",
+  "version": "1.1.0",
   "description": "",
   "main": "bot.js",
   "scripts": {
     "dev": "tsx watch src/bot.ts",
     "start": "node dist/bot.js",
-    "build": "tsup src/bot.ts --minify"
+    "build": "tsup src/bot.ts --minify",
+    "deploy": "npx ts-node ./src/deploy.ts"
   },
   "author": "Julius Gmeinder",
   "license": "ISC",

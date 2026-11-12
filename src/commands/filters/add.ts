@@ -1,8 +1,8 @@
 import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, Role } from "discord.js";
 import embeds from "../../utils/embedUtils";
-import filters from "../../services/API/filters";
-import settings from "../../services/API/settings";
-import { readErrorCode } from "../../services/API/request";
+import filters from "../../services/api/filters";
+import settings from "../../services/api/settings";
+import { readErrorCode } from "../../services/api/request";
 import { FilterProps, BuildFilterField, BuildFilterRoleName, IsValidTier } from "../../utils/filterUtils";
 import { CreateBotRole, HasManageRoles, missingManageRolesMessage } from "../../utils/roleUtils";
 

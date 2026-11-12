@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ChatInputCommandInteraction, ComponentType, EmbedBuilder, MessageFlags, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
-import filters from "../../services/API/filters";
+import filters from "../../services/api/filters";
 import embeds from "../../utils/embedUtils";
 import { Filter } from "../../models";
 import { BuildFilterLabel, BuildFilterName } from "../../utils/filterUtils";

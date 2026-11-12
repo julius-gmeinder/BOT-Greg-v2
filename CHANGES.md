@@ -47,7 +47,7 @@ Not verified: nothing was run against the real v2 api or a Discord server. The r
 
 ## 3. Alerts (api section 3)
 
-`models.ts` contains the new `Match`, `Result` and alert types.
+`models/matches.ts` and `models/alerts.ts` contain the new `Match`, `Result` and alert types.
 
 - **Mentions:** `roleDiscordIds` can be empty (role management disabled). The message is then sent without content, instead of an empty string.
 - **Source:** matches covered by HLTV keep the `hltv.org` author, icon and matchpage link. All other matches get `liquipedia.net` as author (linked to the event page, without icon) and no title link. `hltv.png` is only attached if it is used.

@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
-import alerts from "../../services/API/alerts";
-import settings from "../../services/API/settings";
+import alerts from "../../services/api/alerts";
+import settings from "../../services/api/settings";
 import embedUtils from "../../utils/embedUtils";
 import { AlertConfigStateItem, AlertConfigDTO, AlertConfigResDTO } from "../../models";
 import containerUtils from "../../utils/containerUtils";

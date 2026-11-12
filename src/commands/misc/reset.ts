@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CommandInteraction, ComponentType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
 import embedUtils from "../../utils/embedUtils";
-import guilds from "../../services/API/guilds";
-import roles from "../../services/API/roles";
+import guilds from "../../services/api/guilds";
+import roles from "../../services/api/roles";
 import { DeleteRoles, HasHigherRole, HasManageRoles, missingHigherRoleMessage, missingManageRolesMessage } from "../../utils/roleUtils";
 
 export const data = new SlashCommandBuilder()
