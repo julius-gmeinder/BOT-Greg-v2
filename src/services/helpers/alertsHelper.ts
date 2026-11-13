@@ -18,13 +18,12 @@ export function BuildRolesString(rolesArray: string[]): string | undefined {
     return rolesArray.map((id: string) => `<@&${id}>`).join(" ");
 }
 
-export function BuildAttachment(): AttachmentBuilder {
-    return new AttachmentBuilder(`src/assets/hltv.png`, { name: "hltv.png" });
+export function BuildAttachment(name: "hltv" | "liquipedia"): AttachmentBuilder {
+    return new AttachmentBuilder(`src/assets/${name}.png`, { name: `${name}.png` });
 }
 
-// the hltv icon is only attached if the embed uses it (see ApplyMatchSource)
 export function BuildMatchFiles(match: MatchBase): AttachmentBuilder[] {
-    return match.hltvUrl ? [BuildAttachment()] : [];
+    return [BuildAttachment(match.hltvUrl ? "hltv" : "liquipedia")];
 }
 
 // matches covered by hltv link to their hltv matchpage, all other matches to the liquipedia page of their event
@@ -35,7 +34,7 @@ export function ApplyMatchSource(embed: EmbedBuilder, match: MatchBase): EmbedBu
             .setURL(match.hltvUrl);
     }
 
-    return embed.setAuthor({ name: 'liquipedia.net', url: match.eventUrl });
+    return embed.setAuthor({ name: 'liquipedia.net', iconURL: `attachment://liquipedia.png`, url: match.eventUrl });
 }
 
 export function BuildVersusString(match: MatchBase): string {
