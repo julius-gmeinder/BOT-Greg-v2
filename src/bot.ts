@@ -10,7 +10,7 @@ import { BuildMatchAlertLogString, BuildMatchDelayLogString, BuildResultAlertLog
 import embedUtils from "./utils/embedUtils";
 import { autocompletes } from "./autocomplete";
 import { AutoPoster } from 'topgg-autoposter';
-import ConnectAlertStream from "./services/alertStreamService";
+import ConnectAlertStream, { reconnectDelays } from "./services/alertStreamService";
 
 const client = new Client({
 	intents: [
@@ -22,16 +22,7 @@ const client = new Client({
 client.login(config.DISCORD_TOKEN);
 
 client.once(Events.ClientReady, async () => {
-    console.log(`[guilds] syncing guilds with database`);
-
-    const guildData: GuildData[] = client.guilds.cache.map((guild) => ({
-        id: guild.id,
-        name: guild.name,
-        memberCount: guild.memberCount
-    }));
-
-    await guilds.sync(guildData)
-        .catch((err) => console.log(`[guilds] [error] unable to sync guilds with the api. ${err}`));
+    syncGuilds();
 
     client.user?.setPresence({
         activities: [{ 
@@ -43,6 +34,42 @@ client.once(Events.ClientReady, async () => {
 
     console.log("[status] BOT Greg is online 😎");
 });
+
+// retry sync until success
+async function syncGuilds(): Promise<void> {
+    for (let attempt = 0; ; attempt++) {
+        console.log(`[guilds] syncing guilds with database`);
+
+        try {
+            // rebuilt on every attempt, the bot may have joined or left guilds in the meantime
+            const guildData: GuildData[] = client.guilds.cache.map((guild) => ({
+                id: guild.id,
+                name: guild.name,
+                memberCount: guild.memberCount
+            }));
+
+            const res = await guilds.sync(guildData);
+
+            if (res.ok) {
+                console.log(`[guilds] synced ${guildData.length} guilds with database`);
+                return;
+            }
+
+            // the api is reachable but rejects the request, trying again would not change that
+            if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+                console.log(`[guilds] [error] the api rejected the guild sync (status ${res.status})`);
+                return;
+            }
+
+            throw new Error(`unexpected response (status ${res.status})`);
+        }
+        catch (err) {
+            const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
+            console.log(`[guilds] [error] unable to sync guilds with the api, trying again in ${delay / 1000} seconds. ${err}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
 
 client.on(Events.GuildCreate, async (guild) => {
     console.log(`[guilds] joined ${guild.name} (${guild.id}) with ${guild.memberCount} members`);

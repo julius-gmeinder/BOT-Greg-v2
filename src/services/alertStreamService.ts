@@ -1,11 +1,9 @@
 import fetch from 'node-fetch-cjs';
 import { config } from "../config";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type StreamHandler = (data: any) => Promise<void> | void;
 
-// same delays the signalr connection used before
-const reconnectDelays = [0, 1000, 5000, 10000, 30000, 60000];
+export const reconnectDelays = [0, 1000, 5000, 10000, 30000, 60000];
 
 // the api sends a heartbeat every 30 seconds, without any event for this long the connection is considered dead
 const heartbeatTimeout = 75_000;
