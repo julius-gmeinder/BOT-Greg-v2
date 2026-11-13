@@ -7,7 +7,7 @@ import SendMatchDelays from "./services/matchDelaysService";
 import SendResultAlerts from "./services/resultAlertsService";
 import { GuildData, MatchAlert, MatchDelay, ResultAlert } from "./models";
 import { BuildMatchAlertLogString, BuildMatchDelayLogString, BuildResultAlertLogString } from "./services/helpers/alertsHelper";
-import embedUtils from "./utils/embedUtils";
+import containers, { supportHint } from "./utils/containerUtils";
 import { autocompletes } from "./autocomplete";
 import { AutoPoster } from 'topgg-autoposter';
 import ConnectAlertStream, { reconnectDelays } from "./services/alertStreamService";
@@ -109,18 +109,12 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
                 .execute(interaction)
                 .catch(async (err) => {
                     console.log(`[error] ${err} encountered on ${interaction.guild.name} (${interaction.guild.id})`);
-                    const errorMessage = {
-                        embeds: [embedUtils.error(
-                            `There has been an error running the command.\n
-                            Try revising the bots permissions, reinvite Greg or reset your servers configuration.\n\n
-                            If the issue persists, feel free to join our [community server](https://discord.gg/xBh6jbNjvT) and contact our team.`
-                        )]
-                    };
+                    const errorContainer = containers.error(`There has been an error running the command.\n\n${supportHint}`);
 
                     // commands that already deferred or replied can not be replied to a second time
                     const sendError = interaction.deferred || interaction.replied
-                        ? interaction.editReply(errorMessage)
-                        : interaction.reply(errorMessage);
+                        ? interaction.editReply(containers.edit(errorContainer))
+                        : interaction.reply(containers.publicReply(errorContainer));
 
                     return await sendError.catch((err: any) => console.log(`[error] ${err} encountered on ${interaction.guild.name} (${interaction.guild.id}) unable to send error message`));
                 });

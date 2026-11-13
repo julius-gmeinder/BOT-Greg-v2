@@ -1,5 +1,5 @@
-import { CommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
-import embedUtils from "../../utils/embedUtils";
+import { CommandInteraction } from "discord.js";
+import containers from "../../utils/containerUtils";
 import links from "../../services/api/links";
 import { RoleLinksTreeItem } from "../../models";
 import settings from "../../services/api/settings";
@@ -10,52 +10,34 @@ export async function roleList(interaction: CommandInteraction) {
     const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
 
     if(roleManagement === false)
-        return interaction.reply({ embeds: [embedUtils.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.neutral(roleManagementDisabledMessage)));
 
     const res = await links.getRoleLinksTree(interaction.guildId!);
-    const embeds = [];
-	
-    if(res.status === 200) {
-        const data = await res.json() as RoleLinksTreeItem[];
-        
-        if(data.length === 0)
-            return interaction.reply({ embeds: [embedUtils.neutral("There are no links at the moment")], flags: [MessageFlags.Ephemeral] });
 
-        const roleLinksPerEmbed: number = 8;
-        const pageAmount: number = (data.length - (data.length % roleLinksPerEmbed)) / roleLinksPerEmbed + 1;
-        let pageNumber: number = 1;
+    if(res.status !== 200)
+        return interaction.reply(containers.reply(containers.error("There has been an error running the command")));
 
-        for (let i = 0; i < data.length; i += roleLinksPerEmbed) {
-            const chunk: Array<RoleLinksTreeItem> = data.slice(i, i + roleLinksPerEmbed);
+    const data = await res.json() as RoleLinksTreeItem[];
 
-            const embed = new EmbedBuilder()
-                .setColor(embedUtils.neturalHex)
-                .setFooter({ text: `Page ${pageNumber} of ${pageAmount}`});
+    if(data.length === 0)
+        return interaction.reply(containers.reply(containers.neutral("There are no links at the moment")));
 
-            chunk.forEach((item: RoleLinksTreeItem) => {
+    const container = containers.titled(
+        containers.neturalHex,
+        "Roles",
+        `Found ***${data.length}*** role${data.length > 1 ? "s" : ""} on ***${interaction.guild!.name}***`
+    );
 
-                let linkedRoleIds: string = "-";
-                if(item.linkedRoleDiscordIds.length > 0)
-                    linkedRoleIds = item.linkedRoleDiscordIds.map(x => `<@&${x}>`).join("\n");
+    // one block per role of the bot, followed by the roles that are linked to it
+    const blocks = data.map((item: RoleLinksTreeItem) => {
+        if(item.linkedRoleDiscordIds.length === 0)
+            return `<@&${item.botRoleDiscordId}>\n-# no links`;
 
-                embed.addFields(
-                    { name: `*Role*`, value: `<@&${item.botRoleDiscordId}>`, inline: true},
-                    { name: `*Links*`, value: `${linkedRoleIds}`, inline: true},
-                    { name: `\u200b`, value: `\u200b`, inline: true}
-                )
-            });
+        return `<@&${item.botRoleDiscordId}>\n🔗 ${item.linkedRoleDiscordIds.map(x => `<@&${x}>`).join(", ")}`;
+    });
 
-            embeds.push(embed);
-            pageNumber++;
-        }
+    container.addSeparatorComponents(containers.divider());
+    container.addTextDisplayComponents(containers.text(blocks.join("\n\n")));
 
-        embeds[0].setColor(embedUtils.neturalHex)
-            .setTitle("Roles")
-            .setDescription(`Found ***${data.length}*** role${data.length > 1 ? "s" : ""} on ***${interaction.guild!.name}***`)
-            .setThumbnail(interaction.guild!.iconURL());
-
-        return interaction.reply({ embeds: embeds, flags: [MessageFlags.Ephemeral] });
-    }
-
-    return interaction.reply({ embeds: [embedUtils.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral]});
+    return interaction.reply(containers.reply(container));
 }

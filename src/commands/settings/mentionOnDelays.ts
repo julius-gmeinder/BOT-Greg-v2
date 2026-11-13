@@ -1,6 +1,6 @@
-import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import settings from "../../services/api/settings"
-import embeds from "../../utils/embedUtils";
+import containers from "../../utils/containerUtils";
 
 export async function mentionOnDelays(interaction: ChatInputCommandInteraction) {
     const newValue = interaction.options.getBoolean("value");
@@ -13,20 +13,20 @@ export async function mentionOnDelays(interaction: ChatInputCommandInteraction) 
     if(res.status == 409)
     {
         if(newValue)
-            return interaction.reply({ embeds: [embeds.error("Mentions on delays were already active")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.error("Mentions on delays were already active")));
         
         if(!newValue)
-            return interaction.reply({ embeds: [embeds.error("Mentions on delays were already disabled")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.error("Mentions on delays were already disabled")));
     }
 
     if(res.status == 204)
     {
         if(newValue)
-            return interaction.reply({ embeds: [embeds.success("Mentions on delays are now active")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.success("Mentions on delays are now active")));
 
         if(!newValue)
-            return interaction.reply({ embeds: [embeds.success("Mentions on delays are now disabled")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.success("Mentions on delays are now disabled")));
     }
     
-    return interaction.reply({ embeds: [embeds.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral]});
+    return interaction.reply(containers.reply(containers.error("There has been an error running the command")));
 }

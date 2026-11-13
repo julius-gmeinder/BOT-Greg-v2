@@ -1,7 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
 import alerts from "../../services/api/alerts";
 import settings from "../../services/api/settings";
-import embedUtils from "../../utils/embedUtils";
 import { AlertConfigStateItem, AlertConfigDTO, AlertConfigResDTO } from "../../models";
 import containerUtils from "../../utils/containerUtils";
 import colorUtils from "../../utils/colorUtils";
@@ -14,7 +13,7 @@ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction
     const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
 
     if(currentConfigRes.status !== 200 || roleManagement === null)
-        return interaction.editReply({ embeds: [embedUtils.error("There has been an error running the command")]});
+        return interaction.editReply(containerUtils.edit(containerUtils.error("There has been an error running the command")));
 
     const currentConfig = await currentConfigRes.json() as AlertConfigDTO;
     const containerState = initContainerState(currentConfig);
@@ -116,7 +115,7 @@ function initContainerState(currentConfig: AlertConfigDTO): Record<string, Alert
 
 function buildContainer(interaction: ChatInputCommandInteraction, state: Record<string, AlertConfigStateItem>, currentConfig: AlertConfigDTO, roleManagement: boolean) {
     let container = new ContainerBuilder()
-        .setAccentColor(embedUtils.neturalHex)
+        .setAccentColor(colorUtils.neturalHex)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Alerts configuration"))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small))

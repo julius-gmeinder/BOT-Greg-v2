@@ -1,5 +1,5 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CommandInteraction, ComponentType, MessageFlags, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
-import embedUtils from "../../utils/embedUtils";
+import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CommandInteraction, ComponentType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import containers from "../../utils/containerUtils";
 import guilds from "../../services/api/guilds";
 import roles from "../../services/api/roles";
 import { DeleteRoles, HasHigherRole, HasManageRoles, missingHigherRoleMessage, missingManageRolesMessage } from "../../utils/roleUtils";
@@ -11,14 +11,16 @@ export const data = new SlashCommandBuilder()
     .setDMPermission(false);
 
 export async function execute(interaction: CommandInteraction) {
-    const reply = await interaction.reply({
-        embeds: [embedUtils.error(
-            "Continuing will reset this servers entire configuration\n(alerts, filters, settings, roles and role-links)\n\n" +
-            "Your server will be in the same state as a new server: role management disabled and only the default filter (matches covered by HLTV)"
-        ).setTitle("Reset Configuration?")],
-        components: [BuildActionRow()],
-        flags: [MessageFlags.Ephemeral]
-    });
+    const confirmContainer = containers.titled(
+        containers.errorHex,
+        "Reset Configuration?",
+        "Continuing will reset this servers entire configuration\n(alerts, filters, settings, roles and role-links)\n\n" +
+        "Your server will be in the same state as a new server: role management disabled and only the default filter (matches covered by HLTV)"
+    )
+        .addSeparatorComponents(containers.divider())
+        .addActionRowComponents(BuildActionRow());
+
+    const reply = await interaction.reply(containers.reply(confirmContainer));
 
     const collector = await reply.createMessageComponentCollector({
         componentType: ComponentType.Button,
@@ -33,16 +35,16 @@ export async function execute(interaction: CommandInteraction) {
             const rolesRes = await roles.getRoles(interaction.guildId!);
 
             if(rolesRes.status !== 200)
-                return buttonInteraction.update({embeds: [embedUtils.error("There has been an error running the command")], components: []});
+                return buttonInteraction.update(containers.edit(containers.error("There has been an error running the command")));
 
             const currentRoleIds = await rolesRes.json() as string[];
 
             if(currentRoleIds.length > 0) {
                 if(!HasManageRoles(interaction.guild))
-                    return buttonInteraction.update({ embeds: [embedUtils.error(missingManageRolesMessage)], components: [] });
+                    return buttonInteraction.update(containers.edit(containers.error(missingManageRolesMessage)));
 
                 if(!HasHigherRole(interaction.guild, currentRoleIds))
-                    return buttonInteraction.update({ embeds: [embedUtils.error(missingHigherRoleMessage)], components: [] });
+                    return buttonInteraction.update(containers.edit(containers.error(missingHigherRoleMessage)));
             }
 
             const res = await guilds.reset(interaction.guildId!);
@@ -52,18 +54,18 @@ export async function execute(interaction: CommandInteraction) {
                 const roleIds: string[] = await res.json() as string[];
                 await DeleteRoles(interaction.guild, roleIds);
 
-                return buttonInteraction.update({embeds: [embedUtils.success("Your configuration has been successfully reset\n\n*The default filter is back, you will only get alerts for matches covered by HLTV once you set your channels with `/alerts config`*")], components: []});
+                return buttonInteraction.update(containers.edit(containers.success("Your configuration has been successfully reset\n\n*The default filter is back, you will only get alerts for matches covered by HLTV once you set your channels with `/alerts config`*")));
             }
-            return buttonInteraction.update({embeds: [embedUtils.error("There has been an error running the command")], components: []});
+            return buttonInteraction.update(containers.edit(containers.error("There has been an error running the command")));
         }
 
         if(buttonInteraction.customId == "cancel")
-            return buttonInteraction.update({embeds: [embedUtils.neutral("Your configuration has not been reset")], components: []});
+            return buttonInteraction.update(containers.edit(containers.neutral("Your configuration has not been reset")));
     });
 
     collector.on("end", async (collected) => {
         if(collected.size === 0)
-        await reply.edit({embeds: [embedUtils.neutral("No button was pressed. Your configuration has not been reset")], components: []});
+        await reply.edit(containers.edit(containers.neutral("No button was pressed. Your configuration has not been reset")));
     });
 }
 

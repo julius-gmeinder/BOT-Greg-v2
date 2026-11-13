@@ -1,6 +1,6 @@
-import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import settings from "../../services/api/settings"
-import embeds from "../../utils/embedUtils";
+import containers from "../../utils/containerUtils";
 
 export async function pauseAlerts(interaction: ChatInputCommandInteraction) {
     const newValue = interaction.options.getBoolean("value");
@@ -13,20 +13,20 @@ export async function pauseAlerts(interaction: ChatInputCommandInteraction) {
     if(res.status == 409)
     {
         if(newValue)
-            return interaction.reply({ embeds: [embeds.error("Alerts were already paused")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.error("Alerts were already paused")));
         
         if(!newValue)
-            return interaction.reply({ embeds: [embeds.error("Alerts were already unpaused")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.error("Alerts were already unpaused")));
     }
 
     if(res.status == 204)
     {
         if(newValue)
-            return interaction.reply({ embeds: [embeds.success("Alerts are now paused")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.success("Alerts are now paused")));
 
         if(!newValue)
-            return interaction.reply({ embeds: [embeds.success("Alerts are now unpaused")], flags: [MessageFlags.Ephemeral]});
+            return interaction.reply(containers.reply(containers.success("Alerts are now unpaused")));
     }
     
-    return interaction.reply({ embeds: [embeds.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral]});
+    return interaction.reply(containers.reply(containers.error("There has been an error running the command")));
 }

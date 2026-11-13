@@ -1,7 +1,7 @@
-import { ActionRowBuilder, CommandInteraction, ComponentType, EmbedBuilder, GuildMemberRoleManager, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
+import { ActionRowBuilder, CommandInteraction, ComponentType, GuildMemberRoleManager, PermissionFlagsBits, SlashCommandBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
 import roles from "../../services/api/roles";
 import settings from "../../services/api/settings";
-import embeds from "../../utils/embedUtils";
+import containers from "../../utils/containerUtils";
 import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export const data = new SlashCommandBuilder()
@@ -14,23 +14,23 @@ export async function execute(interaction: CommandInteraction) {
     const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
 
     if(roleManagement === false)
-        return interaction.reply({ embeds: [embeds.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.neutral(roleManagementDisabledMessage)));
 
     const res = await roles.getRoles(interaction.guildId!);
 
     if(res.status !== 200)
-        return interaction.reply({ embeds: [embeds.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.error("There has been an error running the command")));
 
     const roleIds = await res.json() as string[];
 
     if(roleIds.length === 0)
-        return interaction.reply({ embeds: [embeds.error("There are currently no alert roles to select on this server")], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.error("There are currently no alert roles to select on this server")));
 
     if(!hasManageRoles(interaction))
-        return interaction.reply({ embeds: [embeds.error("**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions")], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.error("**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions")));
 
     if(!hasHigherRole(interaction, roleIds)) 
-        return interaction.reply({ embeds: [embeds.error("**Insufficient Permissions**\nMake sure that one of the bots roles is above all of the alerts roles")], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.error("**Insufficient Permissions**\nMake sure that one of the bots roles is above all of the alerts roles")));
 
     const select = new StringSelectMenuBuilder()
         .setCustomId(interaction.id)
@@ -53,14 +53,13 @@ export async function execute(interaction: CommandInteraction) {
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
-    const embed = new EmbedBuilder()
-        .setColor(embeds.neturalHex)
-        .setTitle("Select Roles")
-        .setThumbnail(interaction.user.displayAvatarURL())
-        .setTimestamp()
-        .setDescription("Use the select-menu and choose the roles you want to receive alerts for!\n\n*You can also uncheck roles, if you want them to be removed*");
+    const container = containers.titled(
+        containers.neturalHex,
+        "Select Roles",
+        "Use the select-menu and choose the roles you want to receive alerts for!\n\n*You can also uncheck roles, if you want them to be removed*"
+    ).addActionRowComponents(row);
 
-    const reply = await interaction.reply({ embeds: [embed], components: [row], flags: [MessageFlags.Ephemeral] });
+    const reply = await interaction.reply(containers.reply(container));
 
     const collector = reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
@@ -74,41 +73,40 @@ export async function execute(interaction: CommandInteraction) {
         const userRoles = roleManager.cache.map(role => role.id);
         const selectedRoles = selectInteraction.values.join(",");
 
-        const embedRolesAdded: string[] = [];
-        const embedRolesRemoved: string[] = [];
+        const rolesAdded: string[] = [];
+        const rolesRemoved: string[] = [];
 
         roleIds.forEach(async (id) => {
             if(selectedRoles.includes(id) && !userRoles.includes(id)) {
-                embedRolesAdded.push(`<@&${id}>`);
+                rolesAdded.push(`<@&${id}>`);
                 await roleManager.add(id);
             }
 
             if(userRoles.includes(id) && !selectedRoles.includes(id)) {
-                embedRolesRemoved.push(`<@&${id}>`);
+                rolesRemoved.push(`<@&${id}>`);
                 await roleManager.remove(id);
             }
         });
 
-        const embed = new EmbedBuilder()
-            .setColor(embeds.successHex)
-            .setThumbnail(selectInteraction.user.displayAvatarURL())
-            .setTitle("Roles updated")
-            .setDescription("Your roles have been updated successfully")
-            .setTimestamp();
+        const updatedContainer = containers.titled(
+            containers.successHex,
+            "Roles updated",
+            "Your roles have been updated successfully"
+        );
 
-        if(embedRolesAdded.length > 0)
-            embed.addFields({name: "✨ **Added roles**", value: embedRolesAdded.join("\n")});
+        if(rolesAdded.length > 0)
+            updatedContainer.addTextDisplayComponents(containers.text(`✨ **Added roles**\n${rolesAdded.join("\n")}`));
 
-        if(embedRolesRemoved.length > 0)
-            embed.addFields({name: "🗑️ **Removed roles**", value: embedRolesRemoved.join("\n")});
+        if(rolesRemoved.length > 0)
+            updatedContainer.addTextDisplayComponents(containers.text(`🗑️ **Removed roles**\n${rolesRemoved.join("\n")}`));
 
-        await reply.edit({ embeds: [embed], components: []});
+        await selectInteraction.update(containers.edit(updatedContainer));
         await collector.stop();
     });
 
     collector.on("end", async (collected) => {
         if(collected.size === 0)
-            await reply.edit({ embeds:[embeds.neutral("No roles were selected. Your roles did not change")], components:[] });
+            await reply.edit(containers.edit(containers.neutral("No roles were selected. Your roles did not change")));
     });
 }
 

@@ -61,8 +61,8 @@ export function BuildFilterLabel(filter: Filter): string {
     return Truncate(`Filter ${filter.nr}: ${BuildFilterName(filter)}${IsDefaultFilter(filter) ? " (default)" : ""}`);
 }
 
-// embed field that lists the set properties in its name and the unset properties in its value
-export function BuildFilterField(filter: FilterProps): { name: string, value: string, inline: boolean } {
+// markdown that lists the set properties in its first line and the unset properties (small) in its second line
+export function BuildFilterText(filter: FilterProps): string {
     const valueFields: string[] = [];
     const emptyFields: string[] = [];
 
@@ -72,11 +72,9 @@ export function BuildFilterField(filter: FilterProps): { name: string, value: st
     filter.vrsRank ? valueFields.push(`VRS Rank: ${filter.vrsRank}`) : emptyFields.push("VRS Rank");
     filter.hltvCoverage !== null ? valueFields.push(`HLTV Coverage: ${filter.hltvCoverage ? "yes" : "no"}`) : emptyFields.push("HLTV Coverage");
 
-    return {
-        name: valueFields.length > 0 ? valueFields.join(", ") : "All matches",
-        value: emptyFields.length > 0 ? `${emptyFields.join(", ")}: 🚫` : "\u200b",
-        inline: false
-    };
+    const text = `**${valueFields.length > 0 ? valueFields.join(", ") : "All matches"}**`;
+
+    return emptyFields.length > 0 ? `${text}\n-# ${emptyFields.join(", ")}: 🚫` : text;
 }
 
 function Truncate(text: string): string {

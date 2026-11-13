@@ -1,7 +1,7 @@
-import { CommandInteraction, EmbedBuilder, MessageFlags, PermissionFlagsBits, SlashCommandBuilder, SlashCommandSubcommandBuilder, SlashCommandSubcommandGroupBuilder } from "discord.js";
+import { CommandInteraction, PermissionFlagsBits, SlashCommandBuilder, SlashCommandSubcommandBuilder, SlashCommandSubcommandGroupBuilder } from "discord.js";
 import { commands } from "..";
 import { CommandInfo } from "../../models";
-import embeds from "../../utils/embedUtils";
+import containers from "../../utils/containerUtils";
 
 export const data = new SlashCommandBuilder()
     .setName("commands")
@@ -51,31 +51,24 @@ export async function execute(interaction: CommandInteraction) {
         }
     });
 
-    const userCommandsEmbed = new EmbedBuilder()
-        .setTitle("Commands")
-        .setColor(embeds.neturalHex)
-        .setTimestamp()
-        .setThumbnail(interaction.guild!.members.me!.displayAvatarURL())
-        .addFields(
-            commandsInfo.filter(command => command.perms === "user").map(command => {
-                return { name: command.name, value: command.desc};
-            })
-        );
+    const buildCommandsText = (perms: "admin" | "user") => commandsInfo
+        .filter(command => command.perms === perms)
+        .map(command => `**${command.name}**\n${command.desc}`)
+        .join("\n\n");
 
-    const adminCommandsEmbed = new EmbedBuilder()
-        .setTitle("Admin Commands")
-        .setDescription("Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable `/settings role-management` to get an alert role and a role per filter (needed for `/roles` and `/role link`)")
-        .setColor(embeds.warningHex)
-        .setTimestamp()
-        .setThumbnail(interaction.guild!.members.me!.displayAvatarURL())
-        .addFields(
-            commandsInfo.filter(command => command.perms === "admin").map(command => {
-                return { name: command.name, value: command.desc};
-            })
-        );
+    const userCommandsContainer = containers.titled(containers.neturalHex, "Commands", buildCommandsText("user"));
 
-    if(memberIsAdmin)
-        return interaction.reply({ embeds: [userCommandsEmbed, adminCommandsEmbed], flags: [MessageFlags.Ephemeral]});
-    
-    return interaction.reply({ embeds: [userCommandsEmbed], flags: [MessageFlags.Ephemeral]});
+    if(!memberIsAdmin)
+        return interaction.reply(containers.reply(userCommandsContainer));
+
+    const adminCommandsContainer = containers.titled(
+        containers.warningHex,
+        "Admin Commands",
+        "Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable `/settings role-management` to get an alert role and a role per filter (needed for `/roles` and `/role link`)"
+    );
+
+    adminCommandsContainer.addSeparatorComponents(containers.divider());
+    adminCommandsContainer.addTextDisplayComponents(containers.text(buildCommandsText("admin")));
+
+    return interaction.reply(containers.reply(userCommandsContainer, adminCommandsContainer));
 }

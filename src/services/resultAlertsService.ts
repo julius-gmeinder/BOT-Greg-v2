@@ -1,6 +1,7 @@
 import { Client, EmbedBuilder, TextChannel } from "discord.js";
 import { Result, ResultAlert } from "../models";
 import embeds from "../utils/embedUtils";
+import containers, { supportHint } from "../utils/containerUtils";
 import { ApplyMatchSource, BuildMatchFields, BuildMatchFiles, BuildRolesString } from "./helpers/alertsHelper";
 
 export default async function SendResultAlerts(client: Client<boolean>, resultAlerts: ResultAlert[]) {
@@ -53,13 +54,7 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
                 embeds: [guild.censorResults ? censoredEmbed : embed]
             }).catch(async (err) => {
                 console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-                await channel.send({
-                    embeds: [embeds.error(
-                        `There has been an error sending out a result alert\n
-                        Try revising the bots permissions, reinvite Greg or reset your servers configuration.\n\n
-                        If the issue persists, feel free to join our [community server](https://discord.gg/xBh6jbNjvT) and contact our team.`
-                    )]
-                }).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
+                await channel.send(containers.publicReply(containers.error(`There has been an error sending out a result alert\n\n${supportHint}`))).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
             });
         });
     });

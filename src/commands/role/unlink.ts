@@ -1,7 +1,7 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CommandInteraction, ComponentType, EmbedBuilder, MessageFlags, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, CommandInteraction, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from "discord.js";
 import links from "../../services/api/links";
 import settings from "../../services/api/settings";
-import embeds from "../../utils/embedUtils";
+import containers from "../../utils/containerUtils";
 import { roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleUnlink(interaction: CommandInteraction) {
@@ -9,12 +9,12 @@ export async function roleUnlink(interaction: CommandInteraction) {
     const roleManagement = await settings.isRoleManagementEnabled(interaction.guildId!);
 
     if(roleManagement === false)
-        return interaction.reply({ embeds: [embeds.neutral(roleManagementDisabledMessage)], flags: [MessageFlags.Ephemeral] });
+        return interaction.reply(containers.reply(containers.neutral(roleManagementDisabledMessage)));
 
     const res = await links.getLinkedBotRoles(interaction.guildId!);
 
     if(res.status !== 200)
-        return interaction.reply({ embeds: [embeds.error("There has been an error running the command")], flags: [MessageFlags.Ephemeral]});
+        return interaction.reply(containers.reply(containers.error("There has been an error running the command")));
 
     const botRoleIds = await res.json() as string[];
 
@@ -22,15 +22,21 @@ export async function roleUnlink(interaction: CommandInteraction) {
     let selectedLinkedRoleId: string = "";
 
     if(botRoleIds.length <= 0)
-        return interaction.reply({ embeds: [embeds.error("There currently arent any role links on this server")], flags: [MessageFlags.Ephemeral]});
+        return interaction.reply(containers.reply(containers.error("There currently arent any role links on this server")));
 
-    const embed = new EmbedBuilder()
-        .setColor(embeds.neturalHex)
-        .setTitle("Select Roles")
-        .setTimestamp()
-        .setDescription("Select the roles you want to unlink");
+    // the container is rebuilt on every step, it shows the roles that are already selected above the current select-menu / buttons
+    const buildContainer = (row: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>) => {
+        const container = containers.titled(containers.neturalHex, "Select Roles", "Select the roles you want to unlink");
 
-    const reply = await interaction.reply({ embeds: [embed], components: [BuildBotRoleRow(interaction, botRoleIds)], flags: [MessageFlags.Ephemeral]});
+        if(selectedBotRoleId)
+            container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> ⛓️‍💥 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));
+
+        return container
+            .addSeparatorComponents(containers.divider())
+            .addActionRowComponents(row);
+    };
+
+    const reply = await interaction.reply(containers.reply(buildContainer(BuildBotRoleRow(interaction, botRoleIds))));
 
     // BotRoleCollector: Select the bots role to unlink another role from
     const botRoleCollector = await reply.createMessageComponentCollector({
@@ -42,16 +48,14 @@ export async function roleUnlink(interaction: CommandInteraction) {
     botRoleCollector.on("collect", async (selectInteraction) => {
         selectedBotRoleId = selectInteraction.values[0];
 
-        embed.addFields({ name: 'Unlink', value: `<@&${selectedBotRoleId}>`, inline: true});
-
         const res = await links.getLinkedRoles(selectedBotRoleId);
 
         if(res.status !== 200)
-            return interaction.reply({ embeds: [embeds.error("There has been an error running the command")]});
-    
+            return selectInteraction.update(containers.edit(containers.error("There has been an error running the command")));
+
         const linkedRoleIds = await res.json() as string[];
 
-        await selectInteraction.update({ embeds: [embed], components: [BuildLinkedRoleRow(interaction, linkedRoleIds)]});
+        await selectInteraction.update(containers.edit(buildContainer(BuildLinkedRoleRow(interaction, linkedRoleIds))));
         await botRoleCollector.stop();
     });
 
@@ -65,12 +69,7 @@ export async function roleUnlink(interaction: CommandInteraction) {
     linkedRoleCollector.on("collect", async (selectInteraction) => {
         selectedLinkedRoleId = selectInteraction.values[0];
 
-        embed.addFields(
-            { name: '\u200b', value: `⛓️‍💥`, inline: true},
-            { name: 'From', value: `<@&${selectedLinkedRoleId}>`, inline: true}
-        );
-        
-        await selectInteraction.update({ embeds: [embed], components: [BuildButtonRow()]});
+        await selectInteraction.update(containers.edit(buildContainer(BuildButtonRow())));
         await linkedRoleCollector.stop();
     });
 
@@ -90,25 +89,19 @@ export async function roleUnlink(interaction: CommandInteraction) {
             });
 
             if(res.status === 204) {
-                const embed = new EmbedBuilder()
-                    .setColor(embeds.errorHex)
-                    .setTitle("Unlinking successful")
-                    .setTimestamp()
-                    .setDescription(`<@&${selectedBotRoleId}> ⛓️‍💥 <@&${selectedLinkedRoleId}>`)
-    
-                return buttonInteraction.update({embeds: [embed], components: []});
+                return buttonInteraction.update(containers.edit(containers.titled(containers.errorHex, "Unlinking successful", `<@&${selectedBotRoleId}> ⛓️‍💥 <@&${selectedLinkedRoleId}>`)));
             }
 
-            return buttonInteraction.update({embeds: [embeds.error("There has been an error running the command")], components: []});
+            return buttonInteraction.update(containers.edit(containers.error("There has been an error running the command")));
         }
 
         if(buttonInteraction.customId == "cancel")
-            return buttonInteraction.update({embeds: [embeds.neutral("Roles have not been unlinked")], components: []});
+            return buttonInteraction.update(containers.edit(containers.neutral("Roles have not been unlinked")));
     });
 
     buttonCollector.on("end", async (collected) => {
         if(collected.size === 0)
-            await reply.edit({embeds: [embeds.neutral("No button was pressed. Roles have not been unlinked")], components: []});
+            await reply.edit(containers.edit(containers.neutral("No button was pressed. Roles have not been unlinked")));
     });
 }
 
