@@ -56,7 +56,7 @@ export async function execute(interaction: CommandInteraction) {
         .map(command => `**${command.name}**\n${command.desc}`)
         .join("\n\n");
 
-    const userCommandsContainer = containers.titled(containers.neturalHex, "Commands", buildCommandsText("user"));
+    const userCommandsContainer = containers.titled(containers.neutralHex, "Commands", buildCommandsText("user"));
 
     if(!memberIsAdmin)
         return interaction.reply(containers.reply(userCommandsContainer));

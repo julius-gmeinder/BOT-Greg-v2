@@ -34,7 +34,7 @@ export async function CreateBotRole(guild: Guild, name: string): Promise<Role> {
         name: name,
         permissions: [],
         colors: {
-            primaryColor: colorUtils.neturalHex
+            primaryColor: colorUtils.neutralHex
         }
     });
 }

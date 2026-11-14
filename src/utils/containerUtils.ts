@@ -1,5 +1,5 @@
 import { ContainerBuilder, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
-import { successHex, neturalHex, warningHex, errorHex } from "../utils/colorUtils"
+import { successHex, neutralHex, warningHex, errorHex } from "../utils/colorUtils"
 
 export const genericErrorMessage = "There has been an error running the command";
 
@@ -7,7 +7,7 @@ export const supportHint = "Try revising the bots permissions, reinvite Greg or 
 
 export default {
     successHex,
-    neturalHex,
+    neutralHex,
     warningHex,
     errorHex,
     success,
@@ -31,7 +31,7 @@ function success(message: string): ContainerBuilder {
 
 function neutral(message: string): ContainerBuilder {
     return new ContainerBuilder()
-        .setAccentColor(neturalHex)
+        .setAccentColor(neutralHex)
         .addTextDisplayComponents(text(message));
 }
 

@@ -1,9 +1,9 @@
 import { EmbedBuilder } from "discord.js";
-import { successHex, neturalHex, warningHex, errorHex } from "../utils/colorUtils"
+import { successHex, neutralHex, warningHex, errorHex } from "../utils/colorUtils"
 
 export default {
     successHex,
-    neturalHex,
+    neutralHex,
     warningHex,
     errorHex,
     success,
@@ -20,7 +20,7 @@ function success(message: string): EmbedBuilder {
 
 function neutral(message: string): EmbedBuilder {
     return new EmbedBuilder()
-        .setColor(neturalHex)
+        .setColor(neutralHex)
         .setDescription(message);
 }
 

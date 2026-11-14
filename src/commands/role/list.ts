@@ -23,7 +23,7 @@ export async function roleList(interaction: CommandInteraction) {
         return interaction.reply(containers.reply(containers.neutral("There are no links at the moment")));
 
     const container = containers.titled(
-        containers.neturalHex,
+        containers.neutralHex,
         "Roles",
         `Found ***${data.length}*** role${data.length > 1 ? "s" : ""} on ***${interaction.guild!.name}***`
     );

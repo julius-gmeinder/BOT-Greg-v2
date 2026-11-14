@@ -26,7 +26,7 @@ export async function roleUnlink(interaction: CommandInteraction) {
 
     // the container is rebuilt on every step, it shows the roles that are already selected above the current select-menu / buttons
     const buildContainer = (row: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>) => {
-        const container = containers.titled(containers.neturalHex, "Select Roles", "Select the roles you want to unlink");
+        const container = containers.titled(containers.neutralHex, "Select Roles", "Select the roles you want to unlink");
 
         if(selectedBotRoleId)
             container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> ⛓️‍💥 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));

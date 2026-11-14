@@ -21,7 +21,7 @@ export async function filtersList(interaction: CommandInteraction) {
         )));
 
     const container = containers.titled(
-        containers.neturalHex,
+        containers.neutralHex,
         "Filters",
         `Found **${data.length}** filter${data.length > 1 ? "s" : ""}\n-# A match only has to match one of them`
     );

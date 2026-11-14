@@ -54,7 +54,7 @@ export async function execute(interaction: CommandInteraction) {
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 
     const container = containers.titled(
-        containers.neturalHex,
+        containers.neutralHex,
         "Select Roles",
         "Use the select-menu and choose the roles you want to receive alerts for!\n\n*You can also uncheck roles, if you want them to be removed*"
     ).addActionRowComponents(row);

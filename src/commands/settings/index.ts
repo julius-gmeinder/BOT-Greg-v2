@@ -120,7 +120,7 @@ function readState(state: SettingsState): GuildSettings {
 }
 
 function buildContainer(interaction: ChatInputCommandInteraction, state: SettingsState, currentSettings: GuildSettings) {
-    const container = containers.titled(containers.neturalHex, "Settings")
+    const container = containers.titled(containers.neutralHex, "Settings")
         .addSeparatorComponents(containers.divider(SeparatorSpacingSize.Large));
 
     // disabling the role management deletes roles, which can not be undone

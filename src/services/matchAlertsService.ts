@@ -9,7 +9,7 @@ export default async function SendMatchAlerts(client: Client<boolean>, matchAler
         const { match } = matchAlert;
 
         const embed = new EmbedBuilder()
-            .setColor(embeds.neturalHex)
+            .setColor(embeds.neutralHex)
             .setTitle(BuildVersusString(match))
             .setDescription(`🔴 Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**\n\u200b`)
             .setTimestamp()

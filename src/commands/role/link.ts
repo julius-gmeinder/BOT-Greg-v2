@@ -40,7 +40,7 @@ export async function roleLink(interaction: CommandInteraction) {
 
     // the container is rebuilt on every step, it shows the roles that are already selected above the current select-menu / buttons
     const buildContainer = (...rows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[]) => {
-        const container = containers.titled(containers.neturalHex, "Select Roles", "Select the roles you want to link together");
+        const container = containers.titled(containers.neutralHex, "Select Roles", "Select the roles you want to link together");
 
         if(selectedBotRoleId)
             container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> 🔗 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));

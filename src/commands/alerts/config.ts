@@ -115,7 +115,7 @@ function initContainerState(currentConfig: AlertConfigDTO): Record<string, Alert
 
 function buildContainer(interaction: ChatInputCommandInteraction, state: Record<string, AlertConfigStateItem>, currentConfig: AlertConfigDTO, roleManagement: boolean) {
     let container = new ContainerBuilder()
-        .setAccentColor(colorUtils.neturalHex)
+        .setAccentColor(colorUtils.neutralHex)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent("## Alerts configuration"))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small))
