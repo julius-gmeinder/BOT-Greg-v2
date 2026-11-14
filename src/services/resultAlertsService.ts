@@ -2,6 +2,7 @@ import { Client, EmbedBuilder, TextChannel } from "discord.js";
 import { Result, ResultAlert } from "../models";
 import embeds from "../utils/embedUtils";
 import containers, { supportHint } from "../utils/containerUtils";
+import emojis from "../utils/emojiUtils";
 import { ApplyMatchSource, BuildMatchFields, BuildMatchFiles, BuildRolesString } from "./helpers/alertsHelper";
 
 export default async function SendResultAlerts(client: Client<boolean>, resultAlerts: ResultAlert[]) {
@@ -18,7 +19,7 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
 
         const embed = new EmbedBuilder()
             .setColor(embeds.successHex)
-            .setTitle(`${teamXName} [ ${teamXMapScore} ] - [ ${teamYMapScore} ] ${teamYName}`)
+            .setTitle(`${teamXName} ${BuildScoreEmoji(teamXMapScore, teamYMapScore)} - ${BuildScoreEmoji(teamYMapScore, teamXMapScore)} ${teamYName}`)
             .setDescription(`${outcome}\n\u200b`)
             .setTimestamp();
 
@@ -60,11 +61,20 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
     });
 }
 
-// e. g. "Mirage 13 - 9", only maps that were actually played
+// green for the winning team, red for the losing team, blue for a draw
+function BuildScoreEmoji(score: number, opponentScore: number): string {
+    let color = emojis.Colors.Blue;
+    if(score !== opponentScore)
+        color = score > opponentScore ? emojis.Colors.Green : emojis.Colors.Red;
+
+    return emojis.getNumber(color, score);
+}
+
+// e. g. "<map emoji> Mirage 13 - 9", only maps that were actually played
 function BuildMapsString(result: Result): string | null {
     const maps = result.maps
         .filter(map => map.mapPlayed)
-        .map(map => `${map.name} **${map.teamXScore} - ${map.teamYScore}**`);
+        .map(map => `${emojis.getMap(emojis.toMap(map.name))} ${map.name} **${map.teamXScore} - ${map.teamYScore}**`);
 
     return maps.length > 0 ? maps.join("\n") : null;
 }

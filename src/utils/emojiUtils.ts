@@ -45,7 +45,7 @@ enum Colors {
     Red = 'red',
 }
 
-const minNumber = 1;
+const minNumber = 0;
 const maxNumber = 50;
 
 const hasNumberEmoji = (number: number): boolean => {
@@ -61,11 +61,11 @@ const numberFile = (color: Colors, number: number): string => {
 
 /**
  * Returns the inline string of a number emoji, to use in an embed or container.
- * Falls back to the plain number, if there is no emoji for it.
+ * Falls back to the plain number, if there is no emoji for it or it is not uploaded to the application.
  */
 const getNumber = (color: Colors, number: number): string => {
     if (!hasNumberEmoji(number)) return number.toString();
-    return toInlineString(numberFile(color, number));
+    return inlineStrings.get(toEmojiName(numberFile(color, number))) ?? number.toString();
 };
 
 const getNumberPath = (color: Colors, number: number): string => {

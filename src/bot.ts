@@ -8,6 +8,7 @@ import SendResultAlerts from "./services/resultAlertsService";
 import { GuildData, MatchAlert, MatchDelay, ResultAlert } from "./models";
 import { BuildMatchAlertLogString, BuildMatchDelayLogString, BuildResultAlertLogString } from "./services/helpers/alertsHelper";
 import containers, { supportHint } from "./utils/containerUtils";
+import { loadEmojis } from "./utils/emojiUtils";
 import { autocompletes } from "./autocomplete";
 import { AutoPoster } from 'topgg-autoposter';
 import ConnectAlertStream, { reconnectDelays } from "./services/alertStreamService";
@@ -21,8 +22,12 @@ const client = new Client({
 
 client.login(config.DISCORD_TOKEN);
 
-client.once(Events.ClientReady, async () => {
+client.once(Events.ClientReady, async (readyClient) => {
     syncGuilds();
+
+    // without the application emojis the alerts fall back to plain text, so a failure is not fatal
+    loadEmojis(readyClient)
+        .catch((err) => console.log(`[emojis] [error] unable to load the application emojis. ${err}`));
 
     client.user?.setPresence({
         activities: [{ 
