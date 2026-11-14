@@ -18,7 +18,6 @@ const emojiAssetsDir = 'src/assets/emojis';
 
 /* ---------- shared ---------- */
 
-// emoji name -> inline string (<:name:id>), filled by loadEmojis()
 const inlineStrings = new Map<string, string>();
 
 // numbers/green/01.png => numbers_green_01
@@ -27,7 +26,7 @@ const toEmojiName = (file: string): string => {
     return withoutExtension.replace(/\//g, '_');
 };
 
-// falls back to :name:, if the emoji is not loaded or not uploaded to the application
+
 const toInlineString = (file: string): string => {
     const name = toEmojiName(file);
     return inlineStrings.get(name) ?? `:${name}:`;
@@ -74,6 +73,18 @@ const getNumberPath = (color: Colors, number: number): string => {
 
 const getNumberFile = (color: Colors, number: number): Promise<Buffer> => {
     return readFile(getNumberPath(color, number));
+};
+
+/* ---------- symbols ---------- */
+
+const questionMarkFile = 'questionmark.png';
+
+/**
+ * Returns the inline string of the question mark emoji, to stand in for a number that is not shown (e. g. a censored score).
+ * Falls back to a plain question mark, if the emoji is not uploaded to the application.
+ */
+const getQuestionMark = (): string => {
+    return inlineStrings.get(toEmojiName(questionMarkFile)) ?? '?';
 };
 
 /* ---------- maps ---------- */
@@ -124,7 +135,7 @@ const getMapFile = (map: Maps): Promise<Buffer> => {
 /* ---------- loading ---------- */
 
 const allEmojiFiles = (): string[] => {
-    const files = Object.values(mapFiles);
+    const files = [...Object.values(mapFiles), questionMarkFile];
 
     for (const color of Object.values(Colors)) {
         for (let number = minNumber; number <= maxNumber; number++) {
@@ -164,6 +175,7 @@ export default {
     getNumber,
     getNumberPath,
     getNumberFile,
+    getQuestionMark,
     toMap,
     getMap,
     getMapPath,
@@ -177,6 +189,7 @@ export {
     getNumber,
     getNumberPath,
     getNumberFile,
+    getQuestionMark,
     toMap,
     getMap,
     getMapPath,

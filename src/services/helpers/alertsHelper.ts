@@ -1,5 +1,6 @@
-import { APIEmbedField, AttachmentBuilder, EmbedBuilder } from "discord.js";
-import { Match, MatchAlert, MatchBase, MatchDelay, Result, ResultAlert } from "../../models";
+import { ContainerBuilder, MessageFlags } from "discord.js";
+import { Match, MatchAlert, MatchBase, MatchDelay, ResultAlert } from "../../models";
+import containers from "../../utils/containerUtils";
 
 const maxStreamsShown = 3;
 
@@ -10,7 +11,6 @@ export function GetUnixTimestamp(dateTime: string): number {
     return Math.floor(ms / 1000);
 }
 
-// undefined if there are no roles to mention (e. g. disabled role management), so the message is sent without content
 export function BuildRolesString(rolesArray: string[]): string | undefined {
     if(rolesArray.length === 0)
         return undefined;
@@ -18,63 +18,58 @@ export function BuildRolesString(rolesArray: string[]): string | undefined {
     return rolesArray.map((id: string) => `<@&${id}>`).join(" ");
 }
 
-export function BuildAttachment(name: "hltv" | "liquipedia"): AttachmentBuilder {
-    return new AttachmentBuilder(`src/assets/${name}.png`, { name: `${name}.png` });
+function BuildLinksString(match: MatchBase): string {
+    const links: string[] = [];
+
+    if(match.hltvUrl)
+        links.push(`**[HLTV](${EscapeLinkUrl(match.hltvUrl)})**`);
+
+    links.push(`**[Liquipedia](${EscapeLinkUrl(match.eventUrl)})**`);
+
+    if(match.faceitUrl)
+        links.push(`**[Faceit](${EscapeLinkUrl(match.faceitUrl)})**`);
+
+    return links.join(" · ");
 }
 
-export function BuildMatchFiles(match: MatchBase): AttachmentBuilder[] {
-    return [BuildAttachment(match.hltvUrl ? "hltv" : "liquipedia")];
+function BuildFormatString(match: MatchBase): string {
+    const format = `Bo${match.bestOf}${match.environment ? ` (${match.environment})` : ""}`;
+    return [match.stage, match.tierString, format].filter(part => part).join(" · ");
 }
 
-// matches covered by hltv link to their hltv matchpage, all other matches to the liquipedia page of their event
-export function ApplyMatchSource(embed: EmbedBuilder, match: MatchBase): EmbedBuilder {
-    if(match.hltvUrl) {
-        return embed
-            .setAuthor({ name: 'hltv.org', iconURL: `attachment://hltv.png`, url: match.hltvUrl })
-            .setURL(match.hltvUrl);
-    }
+export function BuildStreamsString(match: Match): string | null {
+    const streams = match.streams
+        .filter(stream => stream.url !== null)
+        .slice(0, maxStreamsShown)
+        .map(stream => `[${stream.channel}](${EscapeLinkUrl(stream.url!)})`);
 
-    return embed.setAuthor({ name: 'liquipedia.net', iconURL: `attachment://liquipedia.png`, url: match.eventUrl });
+    return streams.length > 0 ? `📺 ${streams.join(" · ")}` : null;
+}
+
+export function BuildAlertContainer(color: number, title: string, description: string, match: MatchBase, details: string | null = null, roleDiscordIds: string[] = []): ContainerBuilder {
+    const rolesString = BuildRolesString(roleDiscordIds);
+
+    const header = `${rolesString ? `${rolesString}\n` : ""}### ${title}\n${description}`;
+    const event = `[${match.eventName}](${EscapeLinkUrl(match.eventUrl)})\n-# ${BuildFormatString(match)}`;
+    const footer = `${BuildLinksString(match)}\n\n-# <t:${GetUnixTimestamp(match.dateTime)}:f> · Powered by Liquipedia`;
+
+    const blocks = [header, details, event, footer].filter(block => block !== null);
+
+    return new ContainerBuilder()
+        .setAccentColor(color)
+        .addTextDisplayComponents(containers.text(blocks.join("\n\n")));
+}
+
+export function BuildAlertPayload(container: ContainerBuilder, roleDiscordIds: string[] = []) {
+    return {
+        components: [container],
+        flags: MessageFlags.IsComponentsV2 as const,
+        allowedMentions: { roles: roleDiscordIds }
+    };
 }
 
 export function BuildVersusString(match: MatchBase): string {
     return `${match.teamX?.name ?? "TBD"} vs ${match.teamY?.name ?? "TBD"}`;
-}
-
-// event, tier, format and links, shared by match alerts and result alerts
-export function BuildMatchFields(match: Match | Result): APIEmbedField[] {
-    const fields: APIEmbedField[] = [];
-
-    const eventLink = `[${match.eventName}](${EscapeLinkUrl(match.eventUrl)})`;
-    fields.push({ name: 'Event', value: match.stage ? `${eventLink}\n${match.stage}` : eventLink, inline: true });
-
-    if(match.tierString)
-        fields.push({ name: 'Tier', value: match.tierString, inline: true });
-
-    fields.push({ name: 'Format', value: `Bo${match.bestOf}${match.environment ? ` (${match.environment})` : ""}`, inline: true });
-
-    if("streams" in match) {
-        const streams = match.streams
-            .filter(stream => stream.url !== null)
-            .slice(0, maxStreamsShown)
-            .map(stream => `[${stream.channel}](${EscapeLinkUrl(stream.url!)})`);
-
-        if(streams.length > 0)
-            fields.push({ name: 'Streams', value: streams.join(" · ") });
-    }
-
-    const links: string[] = [];
-
-    if(match.hltvUrl)
-        links.push(`**[Matchpage](${EscapeLinkUrl(match.hltvUrl)})**`);
-
-    if(match.faceitUrl)
-        links.push(`**[FACEIT](${EscapeLinkUrl(match.faceitUrl)})**`);
-
-    if(links.length > 0)
-        fields.push({ name: '\u200b', value: links.join(" · ") });
-
-    return fields;
 }
 
 // liquipedia urls can contain parentheses, which would end a markdown link early
