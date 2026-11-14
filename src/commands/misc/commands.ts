@@ -64,7 +64,7 @@ export async function execute(interaction: CommandInteraction) {
     const adminCommandsContainer = containers.titled(
         containers.warningHex,
         "Admin Commands",
-        "Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable `/settings role-management` to get an alert role and a role per filter (needed for `/roles` and `/role link`)"
+        "Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable the role management in `/settings` to get an alert role and a role per filter (needed for `/roles` and `/role link`)"
     );
 
     adminCommandsContainer.addSeparatorComponents(containers.divider());

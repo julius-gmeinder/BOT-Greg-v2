@@ -6,23 +6,26 @@ export type GuildSettings = {
     roleManagement: boolean
 }
 
-export type ToggleSetting = {
-    guildDiscordId: string,
-    newValue: boolean
+export type FilterRole = {
+    filterId: string,
+    roleDiscordId: string
 }
 
-export type ToggleRoleManagement = {
-    guildDiscordId: string,
-    newValue: boolean,
-    // the roles are only needed to enable the role management
+export type GuildSettingsSet = GuildSettings & {
+    // the roles are only needed (and only allowed) if the role management gets enabled
     alertRoleDiscordId?: string,
-    filterRoles?: Array<{
-        filterId: string,
-        roleDiscordId: string
-    }>
+    filterRoles?: Array<FilterRole>
 }
 
-export type ToggleRoleManagementRes = {
-    roleManagement: boolean,
+export type GuildSettingsRes = {
+    newSettings: GuildSettings,
+    // only filled if the role management got disabled
     roleDiscordIdsToDelete: Array<string>
 }
+
+export type SettingsStateItem = {
+    title: string,
+    enabledDesc: string,
+    disabledDesc: string,
+    enabled: boolean
+};

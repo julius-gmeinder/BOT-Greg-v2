@@ -6,7 +6,7 @@ export const alertRoleName = "🔴 Alerts";
 export const missingManageRolesMessage = "**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions";
 export const missingHigherRoleMessage = "**Insufficient Permissions**\nMake sure that one of the bots roles is above all of the alerts roles";
 
-export const roleManagementDisabledMessage = "**Role management is disabled on this server**\nGreg sends his alerts without mentions and does not create any roles.\n\n*Admins can enable it with `/settings role-management`*";
+export const roleManagementDisabledMessage = "**Role management is disabled on this server**\nGreg sends his alerts without mentions and does not create any roles.\n\n*Admins can enable it with `/settings`*";
 
 export function HasManageRoles(guild: Guild | null): boolean {
     return guild?.members.me?.permissions.has(PermissionFlagsBits.ManageRoles) ?? false;

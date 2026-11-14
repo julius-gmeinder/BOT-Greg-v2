@@ -179,7 +179,7 @@ function buildMentionsString(config: AlertConfigDTO, roleManagement: boolean): s
     if(roleManagement && config.alertRoleDiscordId !== null)
         return `<@&${config.alertRoleDiscordId}> is mentioned for every alert\n-# Members can choose their roles with \`/roles\``;
 
-    return `Alerts are sent **without mentions**\n-# Want Greg to mention roles? Enable the role management with \`/settings role-management\``;
+    return `Alerts are sent **without mentions**\n-# Want Greg to mention roles? Enable the role management with \`/settings\``;
 }
 
 function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO, roleManagement: boolean) {

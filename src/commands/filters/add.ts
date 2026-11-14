@@ -65,7 +65,7 @@ export async function filtersAdd(interaction: ChatInputCommandInteraction) {
         container.addSeparatorComponents(containers.spacer());
         container.addTextDisplayComponents(containers.text(filterRole
             ? `✨ <@&${filterRole.id}> is mentioned if this filter matches`
-            : "-# Want a role that gets mentioned for this filter? Enable `/settings role-management`"
+            : "-# Want a role that gets mentioned for this filter? Enable the role management in `/settings`"
         ));
 
         return interaction.editReply(containers.edit(container));

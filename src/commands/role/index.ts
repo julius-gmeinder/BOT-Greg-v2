@@ -5,7 +5,7 @@ import { roleList } from "./list";
 
 export const data = new SlashCommandBuilder()
     .setName("role")
-    .setDescription("All role subcommands (role links and unlinks), requires /settings role-management")
+    .setDescription("All role subcommands (role links and unlinks), requires the role management of /settings")
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addSubcommand(subcommand => subcommand
