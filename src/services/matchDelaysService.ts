@@ -1,7 +1,8 @@
 import { Client, TextChannel } from "discord.js";
 import containers, { supportHint } from "../utils/containerUtils";
+import emojis from "../utils/emojiUtils";
 import { MatchDelay } from "../models";
-import { BuildAlertContainer, BuildAlertPayload, BuildVersusString, GetUnixTimestamp } from "./helpers/alertsHelper";
+import { BuildAlertContainer, BuildAlertPayload, BuildVersusTitle, GetUnixTimestamp } from "./helpers/alertsHelper";
 
 export default async function SendMatchDelays(client: Client<boolean>, matchDelays: MatchDelay[]) {
     matchDelays.forEach((matchDelay: MatchDelay) => {
@@ -20,8 +21,8 @@ export default async function SendMatchDelays(client: Client<boolean>, matchDela
             // match.dateTime is the new start time
             const container = BuildAlertContainer(
                 containers.warningHex,
-                `${BuildVersusString(match)} delayed`,
-                `🔴 Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**`,
+                `${BuildVersusTitle(match)} delayed`,
+                `${emojis.getLive()} Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**`,
                 match,
                 null,
                 roleDiscordIds

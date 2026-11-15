@@ -1,6 +1,7 @@
 import { ContainerBuilder, MessageFlags } from "discord.js";
 import { Match, MatchAlert, MatchBase, MatchDelay, ResultAlert } from "../../models";
 import containers from "../../utils/containerUtils";
+import emojis from "../../utils/emojiUtils";
 
 const maxStreamsShown = 3;
 
@@ -34,23 +35,24 @@ function BuildLinksString(match: MatchBase): string {
 
 function BuildFormatString(match: MatchBase): string {
     const format = `Bo${match.bestOf}${match.environment ? ` (${match.environment})` : ""}`;
-    return [match.stage, match.tierString, format].filter(part => part).join(" · ");
+    return [match.tierString, match.stage, format].filter(part => part).join(" · ");
 }
 
+// e. g. "<platform emoji> channel", one line per stream
 export function BuildStreamsString(match: Match): string | null {
     const streams = match.streams
         .filter(stream => stream.url !== null)
         .slice(0, maxStreamsShown)
-        .map(stream => `[${stream.channel}](${EscapeLinkUrl(stream.url!)})`);
+        .map(stream => `${emojis.getStream(stream.platform)} [${stream.channel}](${EscapeLinkUrl(stream.url!)})`);
 
-    return streams.length > 0 ? `📺 ${streams.join(" · ")}` : null;
+    return streams.length > 0 ? streams.join("\n") : null;
 }
 
 export function BuildAlertContainer(color: number, title: string, description: string, match: MatchBase, details: string | null = null, roleDiscordIds: string[] = []): ContainerBuilder {
     const rolesString = BuildRolesString(roleDiscordIds);
 
     const header = `${rolesString ? `${rolesString}\n` : ""}### ${title}\n${description}`;
-    const event = `[${match.eventName}](${EscapeLinkUrl(match.eventUrl)})\n-# ${BuildFormatString(match)}`;
+    const event = `${match.eventName}\n-# ${BuildFormatString(match)}`;
     const footer = `${BuildLinksString(match)}\n\n-# <t:${GetUnixTimestamp(match.dateTime)}:f> · Powered by Liquipedia`;
 
     const blocks = [header, details, event, footer].filter(block => block !== null);
@@ -68,8 +70,14 @@ export function BuildAlertPayload(container: ContainerBuilder, roleDiscordIds: s
     };
 }
 
+// plain text, used for the logs
 export function BuildVersusString(match: MatchBase): string {
     return `${match.teamX?.name ?? "TBD"} vs ${match.teamY?.name ?? "TBD"}`;
+}
+
+// with the versus emoji, used for the titles of match and delay alerts
+export function BuildVersusTitle(match: MatchBase): string {
+    return `${match.teamX?.name ?? "TBD"} ${emojis.getVersus()} ${match.teamY?.name ?? "TBD"}`;
 }
 
 // liquipedia urls can contain parentheses, which would end a markdown link early

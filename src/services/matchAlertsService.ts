@@ -1,14 +1,15 @@
 import { Client, TextChannel } from "discord.js";
 import containers, { supportHint } from "../utils/containerUtils";
+import emojis from "../utils/emojiUtils";
 import { MatchAlert } from "../models";
-import { BuildAlertContainer, BuildAlertPayload, BuildStreamsString, BuildVersusString, GetUnixTimestamp } from "./helpers/alertsHelper";
+import { BuildAlertContainer, BuildAlertPayload, BuildStreamsString, BuildVersusTitle, GetUnixTimestamp } from "./helpers/alertsHelper";
 
 export default async function SendMatchAlerts(client: Client<boolean>, matchAlerts: MatchAlert[]) {
     matchAlerts.forEach((matchAlert: MatchAlert) => {
         const { match } = matchAlert;
 
         const streamsString = BuildStreamsString(match);
-        const description = `🔴 Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**`;
+        const description = `${emojis.getLive()} Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**`;
 
         matchAlert.guilds.forEach(async (guild) => {
             const channel = client.channels.cache.get(guild.channelDiscordId) as TextChannel;
@@ -22,7 +23,7 @@ export default async function SendMatchAlerts(client: Client<boolean>, matchAler
             // the role mentions are part of the container, so it is built for every guild
             const container = BuildAlertContainer(
                 containers.neutralHex,
-                BuildVersusString(match),
+                BuildVersusTitle(match),
                 description,
                 match,
                 streamsString,

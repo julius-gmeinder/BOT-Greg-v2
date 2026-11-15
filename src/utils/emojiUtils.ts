@@ -10,6 +10,7 @@ import { Client } from 'discord.js';
  * numbers/green/01.png => numbers_green_01
  *
  * To add a map:    add the file to src/assets/emojis/maps, add it to Maps and mapFiles, upload it to the dev portal.
+ * To add a stream: add the file to src/assets/emojis/streams, add it to StreamPlatforms and streamFiles, upload it to the dev portal.
  * To add a number: add the files for every color, raise maxNumber, upload them to the dev portal.
  * To add a color:  add the files for every number, add it to Colors, upload them to the dev portal.
  */
@@ -45,7 +46,7 @@ enum Colors {
 }
 
 const minNumber = 0;
-const maxNumber = 50;
+const maxNumber = 9;
 
 const hasNumberEmoji = (number: number): boolean => {
     return Number.isInteger(number) && number >= minNumber && number <= maxNumber;
@@ -85,6 +86,26 @@ const questionMarkFile = 'questionmark.png';
  */
 const getQuestionMark = (): string => {
     return inlineStrings.get(toEmojiName(questionMarkFile)) ?? '?';
+};
+
+const liveFile = 'live.gif';
+
+/**
+ * Returns the inline string of the animated live emoji, to mark a match that is about to start.
+ * Falls back to a red circle, if the emoji is not uploaded to the application.
+ */
+const getLive = (): string => {
+    return inlineStrings.get(toEmojiName(liveFile)) ?? '🔴';
+};
+
+const versusFile = 'versus.png';
+
+/**
+ * Returns the inline string of the versus emoji, to put between the two teams of a match.
+ * Falls back to a plain "vs", if the emoji is not uploaded to the application.
+ */
+const getVersus = (): string => {
+    return inlineStrings.get(toEmojiName(versusFile)) ?? 'vs';
 };
 
 /* ---------- maps ---------- */
@@ -132,10 +153,49 @@ const getMapFile = (map: Maps): Promise<Buffer> => {
     return readFile(getMapPath(map));
 };
 
+/* ---------- streams ---------- */
+
+// the values correspond to the platform numbers of the api
+enum StreamPlatforms {
+    Twitch = 0,
+    Youtube = 1,
+    Kick = 2,
+}
+
+const streamFiles: Record<StreamPlatforms, string> = {
+    [StreamPlatforms.Twitch]: 'streams/twitch.png',
+    [StreamPlatforms.Youtube]: 'streams/youtube.png',
+    [StreamPlatforms.Kick]: 'streams/kick.png',
+};
+
+// for platforms without their own emoji
+const defaultStreamFile = 'streams/default.png';
+
+const hasStreamEmoji = (platform: number): platform is StreamPlatforms => {
+    return platform in streamFiles;
+};
+
+/**
+ * Returns the inline string of a stream platform emoji, to use in an embed or container.
+ * Falls back to the default stream emoji, if the platform is unknown or its emoji is not uploaded to the application.
+ */
+const getStream = (platform: number): string => {
+    const file = hasStreamEmoji(platform) ? streamFiles[platform] : defaultStreamFile;
+    return inlineStrings.get(toEmojiName(file)) ?? toInlineString(defaultStreamFile);
+};
+
+const getStreamPath = (platform: StreamPlatforms): string => {
+    return toAssetPath(streamFiles[platform]);
+};
+
+const getStreamFile = (platform: StreamPlatforms): Promise<Buffer> => {
+    return readFile(getStreamPath(platform));
+};
+
 /* ---------- loading ---------- */
 
 const allEmojiFiles = (): string[] => {
-    const files = [...Object.values(mapFiles), questionMarkFile];
+    const files = [...Object.values(mapFiles), ...Object.values(streamFiles), defaultStreamFile, questionMarkFile, versusFile, liveFile];
 
     for (const color of Object.values(Colors)) {
         for (let number = minNumber; number <= maxNumber; number++) {
@@ -171,27 +231,39 @@ const loadEmojis = async (client: Client<true>): Promise<void> => {
 export default {
     Colors,
     Maps,
+    StreamPlatforms,
     loadEmojis,
     getNumber,
     getNumberPath,
     getNumberFile,
     getQuestionMark,
+    getLive,
+    getVersus,
     toMap,
     getMap,
     getMapPath,
     getMapFile,
+    getStream,
+    getStreamPath,
+    getStreamFile,
 }
 
 export {
     Colors,
     Maps,
+    StreamPlatforms,
     loadEmojis,
     getNumber,
     getNumberPath,
     getNumberFile,
     getQuestionMark,
+    getLive,
+    getVersus,
     toMap,
     getMap,
     getMapPath,
     getMapFile,
+    getStream,
+    getStreamPath,
+    getStreamFile,
 }
