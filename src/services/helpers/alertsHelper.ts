@@ -1,6 +1,6 @@
-import { ContainerBuilder, MessageFlags } from "discord.js";
+import { ContainerBuilder, MessageFlags, TextChannel } from "discord.js";
 import { Match, MatchAlert, MatchBase, MatchDelay, ResultAlert } from "../../models";
-import containers from "../../utils/containerUtils";
+import containers, { supportHint } from "../../utils/containerUtils";
 import emojis from "../../utils/emojiUtils";
 
 const maxStreamsShown = 3;
@@ -53,7 +53,8 @@ export function BuildAlertContainer(color: number, title: string, description: s
 
     const header = `${rolesString ? `${rolesString}\n` : ""}### ${title}\n${description}`;
     const event = `${match.eventName}\n-# ${BuildFormatString(match)}`;
-    const footer = `${BuildLinksString(match)}\n\n-# <t:${GetUnixTimestamp(match.dateTime)}:f> · Powered by Liquipedia`;
+    // the footer shows when the alert was sent, not when the match starts
+    const footer = `${BuildLinksString(match)}\n\n-# <t:${Math.floor(Date.now() / 1000)}:f> · Powered by Liquipedia`;
 
     const blocks = [header, details, event, footer].filter(block => block !== null);
 
@@ -68,6 +69,30 @@ export function BuildAlertPayload(container: ContainerBuilder, roleDiscordIds: s
         flags: MessageFlags.IsComponentsV2 as const,
         allowedMentions: { roles: roleDiscordIds }
     };
+}
+
+// the last queued send of every channel that still has pending alerts
+const channelQueues = new Map<string, Promise<void>>();
+
+// alerts of the same channel are sent one after another, so they arrive in the order they were queued in
+// (across all alert types). Different channels do not wait for each other. Never rejects
+export function SendAlert(channel: TextChannel, container: ContainerBuilder, roleDiscordIds: string[], alertName: string): Promise<void> {
+    const send = async () => {
+        await channel.send(BuildAlertPayload(container, roleDiscordIds)).catch(async (err) => {
+            console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
+            await channel.send(containers.publicReply(containers.error(`There has been an error sending out a ${alertName}\n\n${supportHint}`))).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
+        });
+    };
+
+    const queued = (channelQueues.get(channel.id) ?? Promise.resolve()).then(send);
+    channelQueues.set(channel.id, queued);
+
+    queued.finally(() => {
+        if(channelQueues.get(channel.id) === queued)
+            channelQueues.delete(channel.id);
+    });
+
+    return queued;
 }
 
 // plain text, used for the logs

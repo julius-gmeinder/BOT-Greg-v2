@@ -1,11 +1,13 @@
 import { Client, TextChannel } from "discord.js";
 import { Result, ResultAlert } from "../models";
-import containers, { supportHint } from "../utils/containerUtils";
+import containers from "../utils/containerUtils";
 import emojis from "../utils/emojiUtils";
-import { BuildAlertContainer, BuildAlertPayload } from "./helpers/alertsHelper";
+import { BuildAlertContainer, SendAlert } from "./helpers/alertsHelper";
 
 export default async function SendResultAlerts(client: Client<boolean>, resultAlerts: ResultAlert[]) {
-    resultAlerts.forEach((resultAlert: ResultAlert) => {
+    const sends: Promise<void>[] = [];
+
+    for (const resultAlert of resultAlerts) {
         const { result } = resultAlert;
         const { teamXMapScore, teamYMapScore, isForfeit } = result;
 
@@ -21,17 +23,16 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
         const score = `${BuildScoreEmoji(teamXMapScore, teamYMapScore)} - ${BuildScoreEmoji(teamYMapScore, teamXMapScore)}`;
         const censoredScore = `${emojis.getQuestionMark()} - ${emojis.getQuestionMark()}`;
 
-        resultAlert.guilds.forEach(async (guild) => {
+        for (const guild of resultAlert.guilds) {
             const channel = client.channels.cache.get(guild.channelDiscordId) as TextChannel;
 
             if(!channel)
-                return;
+                continue;
 
             // no roles (disabled role management) => no mention, regardless of the setting
             const roleDiscordIds = guild.mentionOnResults ? guild.roleDiscordIds : [];
 
             // the role mentions are part of the container, so it is built for every guild.
-            // Censored results show neither the score nor the outcome, and no maps, as their round scores would spoil the result
             const container = BuildAlertContainer(
                 containers.successHex,
                 `${teamXName} ${guild.censorResults ? censoredScore : score} ${teamYName}`,
@@ -41,12 +42,11 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
                 roleDiscordIds
             );
 
-            await channel.send(BuildAlertPayload(container, roleDiscordIds)).catch(async (err) => {
-                console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-                await channel.send(containers.publicReply(containers.error(`There has been an error sending out a result alert\n\n${supportHint}`))).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
-            });
-        });
-    });
+            sends.push(SendAlert(channel, container, roleDiscordIds, "result alert"));
+        }
+    }
+
+    await Promise.all(sends);
 }
 
 // green for the winning team, red for the losing team, blue for a draw

@@ -1,24 +1,25 @@
 import { Client, TextChannel } from "discord.js";
-import containers, { supportHint } from "../utils/containerUtils";
+import containers from "../utils/containerUtils";
 import emojis from "../utils/emojiUtils";
 import { MatchDelay } from "../models";
-import { BuildAlertContainer, BuildAlertPayload, BuildVersusTitle, GetUnixTimestamp } from "./helpers/alertsHelper";
+import { BuildAlertContainer, BuildVersusTitle, GetUnixTimestamp, SendAlert } from "./helpers/alertsHelper";
 
 export default async function SendMatchDelays(client: Client<boolean>, matchDelays: MatchDelay[]) {
-    matchDelays.forEach((matchDelay: MatchDelay) => {
+    const sends: Promise<void>[] = [];
+
+    for (const matchDelay of matchDelays) {
         const { match } = matchDelay;
 
-        matchDelay.guilds.forEach(async (guild) => {
+        for (const guild of matchDelay.guilds) {
             const channel = client.channels.cache.get(guild.channelDiscordId) as TextChannel;
 
             if(!channel)
-                return;
+                continue;
 
             // no roles (disabled role management) => no mention, regardless of the setting
             const roleDiscordIds = guild.mentionOnDelays ? guild.roleDiscordIds : [];
 
             // the role mentions are part of the container, so it is built for every guild.
-            // match.dateTime is the new start time
             const container = BuildAlertContainer(
                 containers.warningHex,
                 `${BuildVersusTitle(match)} delayed`,
@@ -28,10 +29,9 @@ export default async function SendMatchDelays(client: Client<boolean>, matchDela
                 roleDiscordIds
             );
 
-            await channel.send(BuildAlertPayload(container, roleDiscordIds)).catch(async (err) => {
-                console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-                await channel.send(containers.publicReply(containers.error(`There has been an error sending out a match alert\n\n${supportHint}`))).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
-            });
-        });
-    });
+            sends.push(SendAlert(channel, container, roleDiscordIds, "match alert"));
+        }
+    }
+
+    await Promise.all(sends);
 }

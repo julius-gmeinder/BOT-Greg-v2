@@ -1,21 +1,23 @@
 import { Client, TextChannel } from "discord.js";
-import containers, { supportHint } from "../utils/containerUtils";
+import containers from "../utils/containerUtils";
 import emojis from "../utils/emojiUtils";
 import { MatchAlert } from "../models";
-import { BuildAlertContainer, BuildAlertPayload, BuildStreamsString, BuildVersusTitle, GetUnixTimestamp } from "./helpers/alertsHelper";
+import { BuildAlertContainer, BuildStreamsString, BuildVersusTitle, GetUnixTimestamp, SendAlert } from "./helpers/alertsHelper";
 
 export default async function SendMatchAlerts(client: Client<boolean>, matchAlerts: MatchAlert[]) {
-    matchAlerts.forEach((matchAlert: MatchAlert) => {
+    const sends: Promise<void>[] = [];
+
+    for (const matchAlert of matchAlerts) {
         const { match } = matchAlert;
 
         const streamsString = BuildStreamsString(match);
         const description = `${emojis.getLive()} Live **<t:${GetUnixTimestamp(match.dateTime)}:R>**`;
 
-        matchAlert.guilds.forEach(async (guild) => {
+        for (const guild of matchAlert.guilds) {
             const channel = client.channels.cache.get(guild.channelDiscordId) as TextChannel;
 
             if(!channel)
-                return;
+                continue;
 
             // no roles (disabled role management) => no mention
             const roleDiscordIds = guild.roleDiscordIds;
@@ -30,10 +32,9 @@ export default async function SendMatchAlerts(client: Client<boolean>, matchAler
                 roleDiscordIds
             );
 
-            await channel.send(BuildAlertPayload(container, roleDiscordIds)).catch(async (err) => {
-                console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-                await channel.send(containers.publicReply(containers.error(`There has been an error sending out a match alert\n\n${supportHint}`))).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
-            });
-        });
-    });
+            sends.push(SendAlert(channel, container, roleDiscordIds, "match alert"));
+        }
+    }
+
+    await Promise.all(sends);
 }
