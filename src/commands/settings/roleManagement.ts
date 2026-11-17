@@ -4,6 +4,7 @@ import roles from "../../services/api/roles";
 import { genericErrorMessage } from "../../utils/containerUtils";
 import { Filter, FilterRole } from "../../models";
 import { BuildFilterRoleName } from "../../utils/filterUtils";
+import logger from "../../utils/logger";
 import { alertRoleName, CreateBotRole, DeleteRoles, HasHigherRole, HasManageRoles, missingHigherRoleMessage, missingManageRolesMessage } from "../../utils/roleUtils";
 
 const maxRolesPerGuild = 250; // discord allows a maximum of 250 roles per server
@@ -45,7 +46,7 @@ export async function createRolesAsync(guild: Guild): Promise<CreatedRoles | str
         return { alertRoleDiscordId: alertRole.id, filterRoles: filterRoles };
     }
     catch (err) {
-        console.log(`[error] ${err} encountered on ${guild.name} (${guild.id}) while creating the roles of the role management`);
+        logger.error("roles", `${err} encountered on ${guild.name} (${guild.id}) while creating the roles of the role management`);
         await DeleteRoles(guild, createdRoles.map(role => role.id));
         return "The roles could not be created. Please check the bots permissions and try again";
     }

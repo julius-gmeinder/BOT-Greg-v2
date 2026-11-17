@@ -2,6 +2,7 @@ import { ContainerBuilder, MessageFlags, TextChannel } from "discord.js";
 import { Match, MatchAlert, MatchBase, MatchDelay, ResultAlert } from "../../models";
 import containers, { supportHint } from "../../utils/containerUtils";
 import emojis from "../../utils/emojiUtils";
+import logger from "../../utils/logger";
 
 const maxStreamsShown = 3;
 
@@ -79,8 +80,8 @@ const channelQueues = new Map<string, Promise<void>>();
 export function SendAlert(channel: TextChannel, container: ContainerBuilder, roleDiscordIds: string[], alertName: string): Promise<void> {
     const send = async () => {
         await channel.send(BuildAlertPayload(container, roleDiscordIds)).catch(async (err) => {
-            console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
-            await channel.send(containers.publicReply(containers.error(`There has been an error sending out a ${alertName}\n\n${supportHint}`))).catch((err) => console.log(`[error] ${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
+            logger.error("alerts", `${err} encountered on ${channel.guild.name} (${channel.guild.id})`);
+            await channel.send(containers.publicReply(containers.error(`There has been an error sending out a ${alertName}\n\n${supportHint}`))).catch((err) => logger.error("alerts", `${err} encountered on ${channel.guild.name} (${channel.guild.id}) unable to send error message`));
         });
     };
 
@@ -111,13 +112,13 @@ export function EscapeLinkUrl(url: string): string {
 }
 
 export function BuildMatchAlertLogString(matchAlerts: MatchAlert[], elapsedTime: string): string {
-    return `[matches] sent ${matchAlerts.length} match alerts (took ${elapsedTime}ms)\n${matchAlerts.map(a => `    "${BuildVersusString(a.match)}" for ${a.guilds.length} servers`).join("\n")}`;
+    return `sent ${matchAlerts.length} match alerts (took ${elapsedTime}ms)\n${matchAlerts.map(a => `    "${BuildVersusString(a.match)}" for ${a.guilds.length} servers`).join("\n")}`;
 }
 
 export function BuildMatchDelayLogString(matchDelays: MatchDelay[], elapsedTime: string): string {
-    return `[delays] sent ${matchDelays.length} match delays (took ${elapsedTime}ms)\n${matchDelays.map(a => `    "${BuildVersusString(a.match)}" for ${a.guilds.length} servers`).join("\n")}`;
+    return `sent ${matchDelays.length} match delays (took ${elapsedTime}ms)\n${matchDelays.map(a => `    "${BuildVersusString(a.match)}" for ${a.guilds.length} servers`).join("\n")}`;
 }
 
 export function BuildResultAlertLogString(resultAlerts: ResultAlert[], elapsedTime: string): string {
-    return `[results] sent ${resultAlerts.length} result alerts (took ${elapsedTime}ms)\n${resultAlerts.map(a => `    "${BuildVersusString(a.result)}" for ${a.guilds.length} servers`).join("\n")}`;
+    return `sent ${resultAlerts.length} result alerts (took ${elapsedTime}ms)\n${resultAlerts.map(a => `    "${BuildVersusString(a.result)}" for ${a.guilds.length} servers`).join("\n")}`;
 }

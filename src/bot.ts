@@ -12,6 +12,7 @@ import { loadEmojis } from "./utils/emojiUtils";
 import { autocompletes } from "./autocomplete";
 import { AutoPoster } from 'topgg-autoposter';
 import ConnectAlertStream, { reconnectDelays } from "./services/alertStreamService";
+import logger from "./utils/logger";
 
 const client = new Client({
 	intents: [
@@ -27,7 +28,7 @@ client.once(Events.ClientReady, async (readyClient) => {
 
     // without the application emojis the alerts fall back to plain text, so a failure is not fatal
     loadEmojis(readyClient)
-        .catch((err) => console.log(`[emojis] [error] unable to load the application emojis. ${err}`));
+        .catch((err) => logger.error("emojis", `unable to load the application emojis. ${err}`));
 
     client.user?.setPresence({
         activities: [{ 
@@ -37,13 +38,13 @@ client.once(Events.ClientReady, async (readyClient) => {
         status: "dnd"
     });
 
-    console.log("[status] BOT Greg is online 😎");
+    logger.info("status", "BOT Greg is online 😎");
 });
 
 // retry sync until success
 async function syncGuilds(): Promise<void> {
     for (let attempt = 0; ; attempt++) {
-        console.log(`[guilds] syncing guilds with database`);
+        logger.info("guilds", "syncing guilds with database");
 
         try {
             // rebuilt on every attempt, the bot may have joined or left guilds in the meantime
@@ -56,13 +57,13 @@ async function syncGuilds(): Promise<void> {
             const res = await guilds.sync(guildData);
 
             if (res.ok) {
-                console.log(`[guilds] synced ${guildData.length} guilds with database`);
+                logger.info("guilds", `synced ${guildData.length} guilds with database`);
                 return;
             }
 
             // the api is reachable but rejects the request, trying again would not change that
             if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
-                console.log(`[guilds] [error] the api rejected the guild sync (status ${res.status})`);
+                logger.error("guilds", `the api rejected the guild sync (status ${res.status})`);
                 return;
             }
 
@@ -70,26 +71,26 @@ async function syncGuilds(): Promise<void> {
         }
         catch (err) {
             const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)];
-            console.log(`[guilds] [error] unable to sync guilds with the api, trying again in ${delay / 1000} seconds. ${err}`);
+            logger.error("guilds", `unable to sync guilds with the api, trying again in ${delay / 1000} seconds. ${err}`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 }
 
 client.on(Events.GuildCreate, async (guild) => {
-    console.log(`[guilds] joined ${guild.name} (${guild.id}) with ${guild.memberCount} members`);
+    logger.info("guilds", `joined ${guild.name} (${guild.id}) with ${guild.memberCount} members`);
 
     await guilds.add({
         id: guild.id,
         name: guild.name,
         memberCount: guild.memberCount
-    }).catch((err) => console.log(`[guilds] [error] unable to add ${guild.name} (${guild.id}). ${err}`));
+    }).catch((err) => logger.error("guilds", `unable to add ${guild.name} (${guild.id}). ${err}`));
 });
 
 client.on(Events.GuildDelete, async (guild) => {
-    console.log(`[guilds] left ${guild.name} (${guild.id}) with ${guild.memberCount} members`);
+    logger.info("guilds", `left ${guild.name} (${guild.id}) with ${guild.memberCount} members`);
     await guilds.remove(guild.id)
-        .catch((err) => console.log(`[guilds] [error] unable to remove ${guild.name} (${guild.id}). ${err}`));
+        .catch((err) => logger.error("guilds", `unable to remove ${guild.name} (${guild.id}). ${err}`));
 });
 
 client.on(Events.InteractionCreate, async (interaction: any) => {
@@ -101,7 +102,7 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
             autocompletes[commandName as keyof typeof autocompletes]
                 .autocomplete(interaction)
                 .catch(async (err) => {
-                    console.log(`[error] ${err} encountered on ${interaction.guild.name} (${interaction.guild.id})`);
+                    logger.error("autocomplete", `${err} encountered on ${interaction.guild.name} (${interaction.guild.id})`);
                 });
         }
     }
@@ -113,7 +114,7 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
             commands[commandName as keyof typeof commands]
                 .execute(interaction)
                 .catch(async (err) => {
-                    console.log(`[error] ${err} encountered on ${interaction.guild.name} (${interaction.guild.id})`);
+                    logger.error("commands", `${err} encountered on ${interaction.guild.name} (${interaction.guild.id})`);
                     const errorContainer = containers.error(`There has been an error running the command.\n\n${supportHint}`);
 
                     // commands that already deferred or replied can not be replied to a second time
@@ -121,14 +122,14 @@ client.on(Events.InteractionCreate, async (interaction: any) => {
                         ? interaction.editReply(containers.edit(errorContainer))
                         : interaction.reply(containers.publicReply(errorContainer));
 
-                    return await sendError.catch((err: any) => console.log(`[error] ${err} encountered on ${interaction.guild.name} (${interaction.guild.id}) unable to send error message`));
+                    return await sendError.catch((err: any) => logger.error("commands", `${err} encountered on ${interaction.guild.name} (${interaction.guild.id}) unable to send error message`));
                 });
 
             const subcommandName = interaction.options._subcommand !== null ? ` ${interaction.options._subcommand}` : "";
             const groupName = interaction.options._group !== null ? ` ${interaction.options._group}` : "";
             
             const { guild, user } = interaction;
-            console.log(`[commands] /${commandName}${groupName}${subcommandName} executed in ${guild.name} (${guild.id}) by ${user.username} (${user.id})`);
+            logger.info("commands", `/${commandName}${groupName}${subcommandName} executed in ${guild.name} (${guild.id}) by ${user.username} (${user.id})`);
         }
     }
 });
@@ -140,25 +141,25 @@ ConnectAlertStream({
         await SendMatchAlerts(client, matchAlerts);
         const endTime = performance.now();
         const elapsedTime = (endTime - startTime).toFixed(2);
-        console.log(BuildMatchAlertLogString(matchAlerts, elapsedTime));
+        logger.info(["alerts", "matches"], BuildMatchAlertLogString(matchAlerts, elapsedTime));
     },
     matchDelays: async (matchDelays: MatchDelay[]) => {
         const startTime = performance.now();
         await SendMatchDelays(client, matchDelays);
         const endTime = performance.now();
         const elapsedTime = (endTime - startTime).toFixed(2);
-        console.log(BuildMatchDelayLogString(matchDelays, elapsedTime));
+        logger.info(["alerts", "delays"], BuildMatchDelayLogString(matchDelays, elapsedTime));
     },
     resultAlerts: async (resultAlerts: ResultAlert[]) => {
         const startTime = performance.now();
         await SendResultAlerts(client, resultAlerts);
         const endTime = performance.now();
         const elapsedTime = (endTime - startTime).toFixed(2);
-        console.log(BuildResultAlertLogString(resultAlerts, elapsedTime));
+        logger.info(["alerts", "results"], BuildResultAlertLogString(resultAlerts, elapsedTime));
     }
 });
 
 // TOP.GG Stats
 const autoPoster = AutoPoster(config.TOPGG_TOKEN, client);
-autoPoster.on("posted", () => console.log("[top.gg] successfully updated stats"));
-autoPoster.on("error", (error) => console.log(`[top.gg] [error] ${error}`));
+autoPoster.on("posted", () => logger.info("top.gg", "successfully updated stats"));
+autoPoster.on("error", (error) => logger.error("top.gg", `${error}`));

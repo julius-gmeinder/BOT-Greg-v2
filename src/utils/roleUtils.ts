@@ -1,5 +1,6 @@
 import { Guild, PermissionFlagsBits, Role } from "discord.js";
 import colorUtils from "./colorUtils";
+import logger from "./logger";
 
 export const alertRoleName = "🔴 Alerts";
 
@@ -50,6 +51,6 @@ export async function DeleteRoles(guild: Guild | null, roleIds: string[]): Promi
         if(!role)
             return;
 
-        await role.delete().catch((err) => console.log(`[error] ${err} encountered on ${guild.name} (${guild.id}) unable to delete role ${roleId}`));
+        await role.delete().catch((err) => logger.error("roles", `${err} encountered on ${guild.name} (${guild.id}) unable to delete role ${roleId}`));
     }));
 }

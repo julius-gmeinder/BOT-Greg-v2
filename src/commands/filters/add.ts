@@ -5,6 +5,7 @@ import settings from "../../services/api/settings";
 import { readErrorCode } from "../../services/api/request";
 import { FilterProps, BuildFilterText, BuildFilterRoleName, IsValidTier } from "../../utils/filterUtils";
 import { CreateBotRole, HasManageRoles, missingManageRolesMessage } from "../../utils/roleUtils";
+import logger from "../../utils/logger";
 
 export async function filtersAdd(interaction: ChatInputCommandInteraction) {
     const filter: FilterProps = {
@@ -48,7 +49,7 @@ export async function filtersAdd(interaction: ChatInputCommandInteraction) {
             filterRole = await CreateBotRole(interaction.guild!, BuildFilterRoleName(filter));
         }
         catch (err) {
-            console.log(`[error] ${err} encountered on ${interaction.guild?.name} (${interaction.guildId}) while creating a filter role`);
+            logger.error("filters", `${err} encountered on ${interaction.guild?.name} (${interaction.guildId}) while creating a filter role`);
             return interaction.editReply(containers.edit(containers.error("The role of the filter could not be created. Please check the bots permissions and try again")));
         }
     }

@@ -1,5 +1,6 @@
 import fetch from 'node-fetch-cjs';
 import { config } from "../config";
+import logger from "../utils/logger";
 
 type StreamHandler = (data: any) => Promise<void> | void;
 
@@ -12,7 +13,7 @@ const heartbeatTimeout = 75_000;
 // handlers: one function per event name ("matchAlerts", "matchDelays", "resultAlerts"), it receives the parsed data of the event.
 // There is no replay, alerts that are sent while the bot is not connected are lost
 export default function ConnectAlertStream(handlers: Record<string, StreamHandler>): void {
-    run(handlers).catch((err) => console.log(`[stream] [error] the alert stream stopped unexpectedly. ${err}`));
+    run(handlers).catch((err) => logger.error("stream", "the alert stream stopped unexpectedly", err));
 }
 
 async function run(handlers: Record<string, StreamHandler>): Promise<never> {
@@ -39,7 +40,7 @@ async function run(handlers: Record<string, StreamHandler>): Promise<never> {
             if (!res.ok || !res.body)
                 throw new Error(`unexpected response (status ${res.status})`);
 
-            console.log(`[stream] connection to ${config.API_BASE} established`);
+            logger.info("stream", `connection to ${config.API_BASE} established`);
 
             const decoder = new TextDecoder();
             const parser = createParser((eventName, data) => {
@@ -53,13 +54,13 @@ async function run(handlers: Record<string, StreamHandler>): Promise<never> {
                 parser(decoder.decode(chunk as Buffer, { stream: true }));
             }
 
-            console.log(`[stream] the connection was closed by the api, trying to reconnect`);
+            logger.warn("stream", "the connection was closed by the api, trying to reconnect");
         }
         catch (err) {
             if (controller.signal.aborted)
-                console.log(`[stream] no heartbeat for ${heartbeatTimeout / 1000} seconds, trying to reconnect`);
+                logger.warn("stream", `no heartbeat for ${heartbeatTimeout / 1000} seconds, trying to reconnect`);
             else
-                console.log(`[stream] an error occured and the connection was disrupted, trying to reconnect. ${err}`);
+                logger.warn("stream", `an error occured and the connection was disrupted, trying to reconnect. ${err}`);
         }
         finally {
             clearTimeout(watchdog);
@@ -81,7 +82,7 @@ function dispatch(handlers: Record<string, StreamHandler>, eventName: string, da
     // a failing handler must not end the stream
     Promise.resolve()
         .then(() => handler(JSON.parse(data)))
-        .catch((err) => console.log(`[stream] [error] ${err} encountered while handling "${eventName}"`));
+        .catch((err) => logger.error("stream", `an error was encountered while handling "${eventName}"`, err));
 }
 
 // minimal server-sent-events parser: collects the "event" and "data" fields, an empty line ends the event

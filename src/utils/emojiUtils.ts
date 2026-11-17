@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Client } from 'discord.js';
+import logger from './logger';
 
 /*
  * Application emojis.
@@ -224,7 +225,7 @@ const loadEmojis = async (client: Client<true>): Promise<void> => {
         .filter(name => !inlineStrings.has(name));
 
     if (notUploaded.length > 0) {
-        console.warn(`[emojiUtils] ${notUploaded.length} emoji(s) are not uploaded to the application: ${notUploaded.join(', ')}`);
+        logger.warn("emojis", `${notUploaded.length} emoji(s) are not uploaded to the application: ${notUploaded.join(', ')}`);
     }
 };
 

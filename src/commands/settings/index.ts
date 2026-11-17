@@ -3,6 +3,7 @@ import settings from "../../services/api/settings";
 import { readErrorCode } from "../../services/api/request";
 import containers, { genericErrorMessage } from "../../utils/containerUtils";
 import { DeleteRoles } from "../../utils/roleUtils";
+import logger from "../../utils/logger";
 import { GuildSettings, GuildSettingsRes, SettingsStateItem } from "../../models";
 import { checkRoleDeletionAsync, CreatedRoles, createRolesAsync, getCreatedRoleIds } from "./roleManagement";
 
@@ -226,7 +227,7 @@ async function saveAsync(interaction: ChatInputCommandInteraction, currentSettin
     }
     catch (err) {
         // e. g. the api could not be reached
-        console.log(`[error] ${err} encountered on ${guild.name} (${guild.id}) while saving the settings`);
+        logger.error("settings", `${err} encountered on ${guild.name} (${guild.id}) while saving the settings`);
         await deleteCreatedRolesAsync(interaction, createdRoles);
         return containers.error(genericErrorMessage);
     }
