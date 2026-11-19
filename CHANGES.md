@@ -113,6 +113,7 @@ Not verified: nothing was run against the real v2 api or a Discord server. The r
 ## 6. Other
 
 - New `utils/filterUtils.ts` (tier names, filter names, role names, default filter check) and `utils/roleUtils.ts` (permission checks, creating and deleting roles, shared messages). `reset.ts`, the filter commands and `roleManagement.ts` use them. `misc/roles.ts` still has its own copies of the permission checks.
+- Broken roles: if a role of the bot no longer exists (e. g. deleted by hand), `/roles`, `/role list`, `/role link`, `/role unlink`, `/filters list` and the "Mentions" section of `/alerts config` show a hint to disable and enable the role management, which recreates all roles (`brokenRolesHint` / `HasMissingRoles` in `utils/roleUtils.ts`). `/settings` (while it is enabled) and the admin part of `/commands` always mention it. Temporary, see `docs/broken-roles-hint.md` for how to roll it back.
 - The error handler in `bot.ts` edits the reply if the command already deferred or replied (v1 always called `reply`, which fails in that case).
 
 ## 7. Worth knowing

@@ -2,7 +2,7 @@ import { ActionRowBuilder, CommandInteraction, ComponentType, GuildMemberRoleMan
 import roles from "../../services/api/roles";
 import settings from "../../services/api/settings";
 import containers from "../../utils/containerUtils";
-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
+import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export const data = new SlashCommandBuilder()
     .setName("roles")
@@ -23,8 +23,9 @@ export async function execute(interaction: CommandInteraction) {
 
     const roleIds = await res.json() as string[];
 
+    // with role management there is always at least the alert role
     if(roleIds.length === 0)
-        return interaction.reply(containers.reply(containers.error("There are currently no alert roles to select on this server")));
+        return interaction.reply(containers.reply(containers.error(`There are currently no alert roles to select on this server\n${brokenRolesHint}`)));
 
     if(!hasManageRoles(interaction))
         return interaction.reply(containers.reply(containers.error("**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions")));
@@ -57,7 +58,12 @@ export async function execute(interaction: CommandInteraction) {
         containers.neutralHex,
         "Select Roles",
         "Use the select-menu and choose the roles you want to receive alerts for!\n\n*You can also uncheck roles, if you want them to be removed*"
-    ).addActionRowComponents(row);
+    );
+
+    if(HasMissingRoles(interaction.guild, roleIds))
+        container.addTextDisplayComponents(containers.text(brokenRolesHint));
+
+    container.addActionRowComponents(row);
 
     const reply = await interaction.reply(containers.reply(container));
 

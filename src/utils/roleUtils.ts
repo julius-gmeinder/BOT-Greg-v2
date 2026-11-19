@@ -9,8 +9,19 @@ export const missingHigherRoleMessage = "**Insufficient Permissions**\nMake sure
 
 export const roleManagementDisabledMessage = "**Role management is disabled on this server**\nGreg sends his alerts without mentions and does not create any roles.\n\n*Admins can enable it with `/settings`*";
 
+// disabling deletes the remaining roles (missing ones are skipped), enabling creates the alert role and all filter roles again
+export const brokenRolesHint = "-# Roles missing or broken? Admins can recreate them by disabling and enabling the role management in `/settings`";
+
 export function HasManageRoles(guild: Guild | null): boolean {
     return guild?.members.me?.permissions.has(PermissionFlagsBits.ManageRoles) ?? false;
+}
+
+// true if one of the roles no longer exists on the server (e. g. deleted by hand). Filters without role (null) are ignored
+export function HasMissingRoles(guild: Guild | null, roleIds: Array<string | null>): boolean {
+    if(!guild)
+        return false;
+
+    return roleIds.some(id => id !== null && !guild.roles.cache.has(id));
 }
 
 // the bot can only delete or assign roles below its own highest role. Roles that no longer exist are ignored

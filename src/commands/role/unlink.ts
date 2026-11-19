@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Comman
 import links from "../../services/api/links";
 import settings from "../../services/api/settings";
 import containers from "../../utils/containerUtils";
-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
+import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleUnlink(interaction: CommandInteraction) {
     // role links only exist with role management (disabling it deletes all links)
@@ -24,9 +24,14 @@ export async function roleUnlink(interaction: CommandInteraction) {
     if(botRoleIds.length <= 0)
         return interaction.reply(containers.reply(containers.error("There currently arent any role links on this server")));
 
+    const missingRoles = HasMissingRoles(interaction.guild, botRoleIds);
+
     // the container is rebuilt on every step, it shows the roles that are already selected above the current select-menu / buttons
     const buildContainer = (row: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>) => {
         const container = containers.titled(containers.neutralHex, "Select Roles", "Select the roles you want to unlink");
+
+        if(missingRoles)
+            container.addTextDisplayComponents(containers.text(brokenRolesHint));
 
         if(selectedBotRoleId)
             container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> ⛓️‍💥 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));

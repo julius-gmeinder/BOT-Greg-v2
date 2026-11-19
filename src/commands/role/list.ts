@@ -3,7 +3,7 @@ import containers from "../../utils/containerUtils";
 import links from "../../services/api/links";
 import { RoleLinksTreeItem } from "../../models";
 import settings from "../../services/api/settings";
-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
+import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleList(interaction: CommandInteraction) {
     // without role management the bot has no roles and no links
@@ -38,6 +38,11 @@ export async function roleList(interaction: CommandInteraction) {
 
     container.addSeparatorComponents(containers.divider());
     container.addTextDisplayComponents(containers.text(blocks.join("\n\n")));
+
+    if(HasMissingRoles(interaction.guild, data.map(item => item.botRoleDiscordId))) {
+        container.addSeparatorComponents(containers.divider());
+        container.addTextDisplayComponents(containers.text(brokenRolesHint));
+    }
 
     return interaction.reply(containers.reply(container));
 }

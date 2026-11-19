@@ -4,7 +4,7 @@ import links from "../../services/api/links";
 import { readErrorCode } from "../../services/api/request";
 import settings from "../../services/api/settings";
 import containers from "../../utils/containerUtils";
-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
+import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
 
 export async function roleLink(interaction: CommandInteraction) {
     // role links only exist with role management, without it the bot has no roles that could be linked
@@ -30,7 +30,9 @@ export async function roleLink(interaction: CommandInteraction) {
     let selectedLinkedRoleId: string = "";
 
     if(botRoleIds.length <= 0)
-        return interaction.reply(containers.reply(containers.error("The bot currently doesnt have any roles on this server")));
+        return interaction.reply(containers.reply(containers.error(`The bot currently doesnt have any roles on this server\n${brokenRolesHint}`)));
+
+    const missingRoles = HasMissingRoles(interaction.guild, botRoleIds);
 
     // a select menu holds at most 25 options, so the roles are paged
     for (let i = 0; i < linkedRoleIds.length; i += optionsPerSelect) {
@@ -41,6 +43,9 @@ export async function roleLink(interaction: CommandInteraction) {
     // the container is rebuilt on every step, it shows the roles that are already selected above the current select-menu / buttons
     const buildContainer = (...rows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[]) => {
         const container = containers.titled(containers.neutralHex, "Select Roles", "Select the roles you want to link together");
+
+        if(missingRoles)
+            container.addTextDisplayComponents(containers.text(brokenRolesHint));
 
         if(selectedBotRoleId)
             container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> 🔗 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));

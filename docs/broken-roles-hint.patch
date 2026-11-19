@@ -1,0 +1,268 @@
+diff --git a/src/commands/alerts/config.ts b/src/commands/alerts/config.ts
+index fd652c4..b9935fd 100644
+--- a/src/commands/alerts/config.ts
++++ b/src/commands/alerts/config.ts
+@@ -1,10 +1,11 @@
+-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
++import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, Guild, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
+ import alerts from "../../services/api/alerts";
+ import settings from "../../services/api/settings";
+ import { AlertConfigStateItem, AlertConfigDTO, AlertConfigResDTO } from "../../models";
+ import containerUtils from "../../utils/containerUtils";
+ import colorUtils from "../../utils/colorUtils";
+ import { EscapeLinkUrl, GetUnixTimestamp } from "../../services/helpers/alertsHelper";
++import { brokenRolesHint, HasMissingRoles } from "../../utils/roleUtils";
+ 
+ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction) {
+     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+@@ -69,7 +70,7 @@ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction
+                     return componentInteraction.editReply({ components: [containerUtils.error("There has been an error running the command")] });
+ 
+                 const configRes = await setConfigRes.json() as AlertConfigResDTO;
+-                const savedContainer = buildSavedContainer(currentConfig, configRes, roleManagement)
++                const savedContainer = buildSavedContainer(currentConfig, configRes, roleManagement, interaction.guild)
+                 return componentInteraction.editReply({ components: [savedContainer] });
+             }
+ 
+@@ -153,7 +154,7 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Record<
+             container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large))
+         });
+ 
+-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(currentConfig, roleManagement)}`));
++        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(currentConfig, roleManagement, interaction.guild)}`));
+         container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
+ 
+         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large));
+@@ -174,14 +175,18 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Record<
+ }
+ 
+ // the alert role only exists if the role management is enabled, otherwise alerts are sent without mentions
+-function buildMentionsString(config: AlertConfigDTO, roleManagement: boolean): string {
+-    if(roleManagement && config.alertRoleDiscordId !== null)
++function buildMentionsString(config: AlertConfigDTO, roleManagement: boolean, guild: Guild | null): string {
++    // enabled role management always comes with an alert role, so a missing one is broken
++    if(roleManagement && (config.alertRoleDiscordId === null || HasMissingRoles(guild, [config.alertRoleDiscordId])))
++        return `The alert role of this server is missing\n${brokenRolesHint}`;
++
++    if(roleManagement)
+         return `<@&${config.alertRoleDiscordId}> is mentioned for every alert\n-# Members can choose their roles with \`/roles\``;
+ 
+     return `Alerts are sent **without mentions**\n-# Want Greg to mention roles? Enable the role management with \`/settings\``;
+ }
+ 
+-function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO, roleManagement: boolean) {
++function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO, roleManagement: boolean, guild: Guild | null) {
+     const { newConfig } = configRes;
+ 
+     const container = new ContainerBuilder()
+@@ -202,7 +207,7 @@ function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigRe
+ 
+     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large));
+ 
+-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(newConfig, roleManagement)}`));
++    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(newConfig, roleManagement, guild)}`));
+ 
+     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
+ 
+diff --git a/src/commands/filters/list.ts b/src/commands/filters/list.ts
+index d51b771..6c8351c 100644
+--- a/src/commands/filters/list.ts
++++ b/src/commands/filters/list.ts
+@@ -3,6 +3,7 @@ import filters from "../../services/api/filters";
+ import { Filter } from "../../models";
+ import containers from "../../utils/containerUtils";
+ import { BuildFilterText, IsDefaultFilter } from "../../utils/filterUtils";
++import { brokenRolesHint, HasMissingRoles } from "../../utils/roleUtils";
+ 
+ // a message with components v2 can not display more than 4000 characters, some of them are needed for the heading
+ const maxListLength = 3500;
+@@ -48,5 +49,10 @@ export async function filtersList(interaction: CommandInteraction) {
+ 
+     container.addTextDisplayComponents(containers.text(blocks.join("\n\n")));
+ 
++    if(HasMissingRoles(interaction.guild, data.map(filter => filter.roleDiscordId))) {
++        container.addSeparatorComponents(containers.divider());
++        container.addTextDisplayComponents(containers.text(brokenRolesHint));
++    }
++
+     return interaction.reply(containers.reply(container));
+ }
+diff --git a/src/commands/misc/commands.ts b/src/commands/misc/commands.ts
+index d399f42..01ebf47 100644
+--- a/src/commands/misc/commands.ts
++++ b/src/commands/misc/commands.ts
+@@ -65,7 +65,7 @@ export async function execute(interaction: CommandInteraction) {
+     const adminCommandsContainer = containers.titled(
+         containers.warningHex,
+         "Admin Commands",
+-        "Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable the role management in `/settings` to get an alert role and a role per filter (needed for `/roles` and `/role link`)"
++        "Roles are optional: by default Greg sends his alerts without mentions and does not create any roles.\nEnable the role management in `/settings` to get an alert role and a role per filter (needed for `/roles` and `/role link`).\nIf these roles get deleted or break, disable and enable the role management again to recreate them"
+     );
+ 
+     adminCommandsContainer.addSeparatorComponents(containers.divider());
+diff --git a/src/commands/misc/roles.ts b/src/commands/misc/roles.ts
+index 13aeb5a..2e7cd4c 100644
+--- a/src/commands/misc/roles.ts
++++ b/src/commands/misc/roles.ts
+@@ -2,7 +2,7 @@ import { ActionRowBuilder, CommandInteraction, ComponentType, GuildMemberRoleMan
+ import roles from "../../services/api/roles";
+ import settings from "../../services/api/settings";
+ import containers from "../../utils/containerUtils";
+-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
++import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
+ 
+ export const data = new SlashCommandBuilder()
+     .setName("roles")
+@@ -23,8 +23,9 @@ export async function execute(interaction: CommandInteraction) {
+ 
+     const roleIds = await res.json() as string[];
+ 
++    // with role management there is always at least the alert role
+     if(roleIds.length === 0)
+-        return interaction.reply(containers.reply(containers.error("There are currently no alert roles to select on this server")));
++        return interaction.reply(containers.reply(containers.error(`There are currently no alert roles to select on this server\n${brokenRolesHint}`)));
+ 
+     if(!hasManageRoles(interaction))
+         return interaction.reply(containers.reply(containers.error("**Insufficient Permissions**\nThe bot does not have the required `Manage Roles` permissions")));
+@@ -57,7 +58,12 @@ export async function execute(interaction: CommandInteraction) {
+         containers.neutralHex,
+         "Select Roles",
+         "Use the select-menu and choose the roles you want to receive alerts for!\n\n*You can also uncheck roles, if you want them to be removed*"
+-    ).addActionRowComponents(row);
++    );
++
++    if(HasMissingRoles(interaction.guild, roleIds))
++        container.addTextDisplayComponents(containers.text(brokenRolesHint));
++
++    container.addActionRowComponents(row);
+ 
+     const reply = await interaction.reply(containers.reply(container));
+ 
+diff --git a/src/commands/role/link.ts b/src/commands/role/link.ts
+index 480f154..55950be 100644
+--- a/src/commands/role/link.ts
++++ b/src/commands/role/link.ts
+@@ -4,7 +4,7 @@ import links from "../../services/api/links";
+ import { readErrorCode } from "../../services/api/request";
+ import settings from "../../services/api/settings";
+ import containers from "../../utils/containerUtils";
+-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
++import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
+ 
+ export async function roleLink(interaction: CommandInteraction) {
+     // role links only exist with role management, without it the bot has no roles that could be linked
+@@ -30,7 +30,9 @@ export async function roleLink(interaction: CommandInteraction) {
+     let selectedLinkedRoleId: string = "";
+ 
+     if(botRoleIds.length <= 0)
+-        return interaction.reply(containers.reply(containers.error("The bot currently doesnt have any roles on this server")));
++        return interaction.reply(containers.reply(containers.error(`The bot currently doesnt have any roles on this server\n${brokenRolesHint}`)));
++
++    const missingRoles = HasMissingRoles(interaction.guild, botRoleIds);
+ 
+     // a select menu holds at most 25 options, so the roles are paged
+     for (let i = 0; i < linkedRoleIds.length; i += optionsPerSelect) {
+@@ -42,6 +44,9 @@ export async function roleLink(interaction: CommandInteraction) {
+     const buildContainer = (...rows: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>[]) => {
+         const container = containers.titled(containers.neutralHex, "Select Roles", "Select the roles you want to link together");
+ 
++        if(missingRoles)
++            container.addTextDisplayComponents(containers.text(brokenRolesHint));
++
+         if(selectedBotRoleId)
+             container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> 🔗 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));
+ 
+diff --git a/src/commands/role/list.ts b/src/commands/role/list.ts
+index 980cb61..a8d5cb7 100644
+--- a/src/commands/role/list.ts
++++ b/src/commands/role/list.ts
+@@ -3,7 +3,7 @@ import containers from "../../utils/containerUtils";
+ import links from "../../services/api/links";
+ import { RoleLinksTreeItem } from "../../models";
+ import settings from "../../services/api/settings";
+-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
++import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
+ 
+ export async function roleList(interaction: CommandInteraction) {
+     // without role management the bot has no roles and no links
+@@ -39,5 +39,10 @@ export async function roleList(interaction: CommandInteraction) {
+     container.addSeparatorComponents(containers.divider());
+     container.addTextDisplayComponents(containers.text(blocks.join("\n\n")));
+ 
++    if(HasMissingRoles(interaction.guild, data.map(item => item.botRoleDiscordId))) {
++        container.addSeparatorComponents(containers.divider());
++        container.addTextDisplayComponents(containers.text(brokenRolesHint));
++    }
++
+     return interaction.reply(containers.reply(container));
+ }
+diff --git a/src/commands/role/unlink.ts b/src/commands/role/unlink.ts
+index 76e020d..74b4968 100644
+--- a/src/commands/role/unlink.ts
++++ b/src/commands/role/unlink.ts
+@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, Comman
+ import links from "../../services/api/links";
+ import settings from "../../services/api/settings";
+ import containers from "../../utils/containerUtils";
+-import { roleManagementDisabledMessage } from "../../utils/roleUtils";
++import { brokenRolesHint, HasMissingRoles, roleManagementDisabledMessage } from "../../utils/roleUtils";
+ 
+ export async function roleUnlink(interaction: CommandInteraction) {
+     // role links only exist with role management (disabling it deletes all links)
+@@ -24,10 +24,15 @@ export async function roleUnlink(interaction: CommandInteraction) {
+     if(botRoleIds.length <= 0)
+         return interaction.reply(containers.reply(containers.error("There currently arent any role links on this server")));
+ 
++    const missingRoles = HasMissingRoles(interaction.guild, botRoleIds);
++
+     // the container is rebuilt on every step, it shows the roles that are already selected above the current select-menu / buttons
+     const buildContainer = (row: ActionRowBuilder<StringSelectMenuBuilder | ButtonBuilder>) => {
+         const container = containers.titled(containers.neutralHex, "Select Roles", "Select the roles you want to unlink");
+ 
++        if(missingRoles)
++            container.addTextDisplayComponents(containers.text(brokenRolesHint));
++
+         if(selectedBotRoleId)
+             container.addTextDisplayComponents(containers.text(`<@&${selectedBotRoleId}> ⛓️‍💥 ${selectedLinkedRoleId ? `<@&${selectedLinkedRoleId}>` : "…"}`));
+ 
+diff --git a/src/commands/settings/index.ts b/src/commands/settings/index.ts
+index fd32db2..7d265c7 100644
+--- a/src/commands/settings/index.ts
++++ b/src/commands/settings/index.ts
+@@ -137,6 +137,10 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Setting
+         if(key === "roleManagement" && deletesRoles)
+             content += "\n⚠️ Saving **deletes all roles** Greg created on this server (the alert role and the roles of your filters) and **all role-links**. Members lose these roles";
+ 
++        // toggling off and on again recreates every role, it takes two saves as the message is replaced after saving
++        if(key === "roleManagement" && currentSettings.roleManagement && state.roleManagement.enabled)
++            content += "\n-# Roles missing or broken? Disable the role management and save, then enable it again in a new `/settings` to recreate all roles (role-links get deleted)";
++
+         if(mentionSettings.includes(key) && !state.roleManagement.enabled)
+             content += "\n-# Has no effect without role management";
+ 
+diff --git a/src/utils/roleUtils.ts b/src/utils/roleUtils.ts
+index 13fc33c..720668e 100644
+--- a/src/utils/roleUtils.ts
++++ b/src/utils/roleUtils.ts
+@@ -9,10 +9,21 @@ export const missingHigherRoleMessage = "**Insufficient Permissions**\nMake sure
+ 
+ export const roleManagementDisabledMessage = "**Role management is disabled on this server**\nGreg sends his alerts without mentions and does not create any roles.\n\n*Admins can enable it with `/settings`*";
+ 
++// disabling deletes the remaining roles (missing ones are skipped), enabling creates the alert role and all filter roles again
++export const brokenRolesHint = "-# Roles missing or broken? Admins can recreate them by disabling and enabling the role management in `/settings`";
++
+ export function HasManageRoles(guild: Guild | null): boolean {
+     return guild?.members.me?.permissions.has(PermissionFlagsBits.ManageRoles) ?? false;
+ }
+ 
++// true if one of the roles no longer exists on the server (e. g. deleted by hand). Filters without role (null) are ignored
++export function HasMissingRoles(guild: Guild | null, roleIds: Array<string | null>): boolean {
++    if(!guild)
++        return false;
++
++    return roleIds.some(id => id !== null && !guild.roles.cache.has(id));
++}
++
+ // the bot can only delete or assign roles below its own highest role. Roles that no longer exist are ignored
+ export function HasHigherRole(guild: Guild | null, roleIds: string[]): boolean {
+     const highestBotRole = guild?.members.me?.roles.highest;

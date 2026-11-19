@@ -137,6 +137,10 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Setting
         if(key === "roleManagement" && deletesRoles)
             content += "\n⚠️ Saving **deletes all roles** Greg created on this server (the alert role and the roles of your filters) and **all role-links**. Members lose these roles";
 
+        // toggling off and on again recreates every role, it takes two saves as the message is replaced after saving
+        if(key === "roleManagement" && currentSettings.roleManagement && state.roleManagement.enabled)
+            content += "\n-# Roles missing or broken? Disable the role management and save, then enable it again in a new `/settings` to recreate all roles (role-links get deleted)";
+
         if(mentionSettings.includes(key) && !state.roleManagement.enabled)
             content += "\n-# Has no effect without role management";
 

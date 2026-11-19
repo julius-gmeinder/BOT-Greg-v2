@@ -1,10 +1,11 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType, ChatInputCommandInteraction, ContainerBuilder, Guild, MessageFlags, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, TextDisplayBuilder } from "discord.js";
 import alerts from "../../services/api/alerts";
 import settings from "../../services/api/settings";
 import { AlertConfigStateItem, AlertConfigDTO, AlertConfigResDTO } from "../../models";
 import containerUtils from "../../utils/containerUtils";
 import colorUtils from "../../utils/colorUtils";
 import { EscapeLinkUrl, GetUnixTimestamp } from "../../services/helpers/alertsHelper";
+import { brokenRolesHint, HasMissingRoles } from "../../utils/roleUtils";
 
 export async function alertsConfigAsync(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
@@ -69,7 +70,7 @@ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction
                     return componentInteraction.editReply({ components: [containerUtils.error("There has been an error running the command")] });
 
                 const configRes = await setConfigRes.json() as AlertConfigResDTO;
-                const savedContainer = buildSavedContainer(currentConfig, configRes, roleManagement)
+                const savedContainer = buildSavedContainer(currentConfig, configRes, roleManagement, interaction.guild)
                 return componentInteraction.editReply({ components: [savedContainer] });
             }
 
@@ -153,7 +154,7 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Record<
             container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large))
         });
 
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(currentConfig, roleManagement)}`));
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(currentConfig, roleManagement, interaction.guild)}`));
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
 
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large));
@@ -174,14 +175,18 @@ function buildContainer(interaction: ChatInputCommandInteraction, state: Record<
 }
 
 // the alert role only exists if the role management is enabled, otherwise alerts are sent without mentions
-function buildMentionsString(config: AlertConfigDTO, roleManagement: boolean): string {
-    if(roleManagement && config.alertRoleDiscordId !== null)
+function buildMentionsString(config: AlertConfigDTO, roleManagement: boolean, guild: Guild | null): string {
+    // enabled role management always comes with an alert role, so a missing one is broken
+    if(roleManagement && (config.alertRoleDiscordId === null || HasMissingRoles(guild, [config.alertRoleDiscordId])))
+        return `The alert role of this server is missing\n${brokenRolesHint}`;
+
+    if(roleManagement)
         return `<@&${config.alertRoleDiscordId}> is mentioned for every alert\n-# Members can choose their roles with \`/roles\``;
 
     return `Alerts are sent **without mentions**\n-# Want Greg to mention roles? Enable the role management with \`/settings\``;
 }
 
-function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO, roleManagement: boolean) {
+function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigResDTO, roleManagement: boolean, guild: Guild | null) {
     const { newConfig } = configRes;
 
     const container = new ContainerBuilder()
@@ -202,7 +207,7 @@ function buildSavedContainer(oldConfig: AlertConfigDTO, configRes: AlertConfigRe
 
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Large));
 
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(newConfig, roleManagement)}`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### Mentions\n${buildMentionsString(newConfig, roleManagement, guild)}`));
 
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
 

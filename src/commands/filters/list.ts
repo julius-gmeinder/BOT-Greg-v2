@@ -3,6 +3,7 @@ import filters from "../../services/api/filters";
 import { Filter } from "../../models";
 import containers from "../../utils/containerUtils";
 import { BuildFilterText, IsDefaultFilter } from "../../utils/filterUtils";
+import { brokenRolesHint, HasMissingRoles } from "../../utils/roleUtils";
 
 // a message with components v2 can not display more than 4000 characters, some of them are needed for the heading
 const maxListLength = 3500;
@@ -47,6 +48,11 @@ export async function filtersList(interaction: CommandInteraction) {
     }
 
     container.addTextDisplayComponents(containers.text(blocks.join("\n\n")));
+
+    if(HasMissingRoles(interaction.guild, data.map(filter => filter.roleDiscordId))) {
+        container.addSeparatorComponents(containers.divider());
+        container.addTextDisplayComponents(containers.text(brokenRolesHint));
+    }
 
     return interaction.reply(containers.reply(container));
 }
