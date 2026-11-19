@@ -49,7 +49,6 @@ export default async function SendResultAlerts(client: Client<boolean>, resultAl
     await Promise.all(sends);
 }
 
-// green for the winning team, red for the losing team, blue for a draw
 function BuildScoreEmoji(score: number, opponentScore: number): string {
     let color = emojis.Colors.Blue;
     if(score !== opponentScore)

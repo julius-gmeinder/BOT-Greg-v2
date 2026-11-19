@@ -39,7 +39,6 @@ function BuildFormatString(match: MatchBase): string {
     return [match.tierString, match.stage, format].filter(part => part).join(" · ");
 }
 
-// e. g. "<platform emoji> channel", one line per stream
 export function BuildStreamsString(match: Match): string | null {
     const streams = match.streams
         .filter(stream => stream.url !== null)

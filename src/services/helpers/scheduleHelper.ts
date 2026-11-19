@@ -5,7 +5,6 @@ import containers from "../../utils/containerUtils";
 import emojis from "../../utils/emojiUtils";
 import { EscapeLinkUrl, GetUnixTimestamp } from "./alertsHelper";
 
-// every part that is null or empty is skipped
 function Join(parts: Array<string | null | undefined>, separator = " · "): string {
     return parts.filter(part => part).join(separator);
 }
@@ -19,7 +18,6 @@ function TeamNames(match: MatchBase): [string, string] {
     return [Escape(match.teamX?.name ?? "TBD"), Escape(match.teamY?.name ?? "TBD")];
 }
 
-// hltv if the match is covered, otherwise the liquipedia page of the event
 function MatchLink(match: MatchBase): string {
     return match.hltvUrl
         ? `[HLTV](${EscapeLinkUrl(match.hltvUrl)})`

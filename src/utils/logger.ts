@@ -36,7 +36,6 @@ const colors = {
     reset: "\x1B[39m\x1B[49m\x1B[22m",
 };
 
-// tag -> color
 // tags that are not listed here get a color from the fallbackColors, see getTagColor
 const colorsByTag: Record<string, string> = {
     // same colors as in the api

@@ -38,7 +38,6 @@ export async function roleUnlink(interaction: CommandInteraction) {
 
     const reply = await interaction.reply(containers.reply(buildContainer(BuildBotRoleRow(interaction, botRoleIds))));
 
-    // BotRoleCollector: Select the bots role to unlink another role from
     const botRoleCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
         time: 30_000,
@@ -59,7 +58,6 @@ export async function roleUnlink(interaction: CommandInteraction) {
         await botRoleCollector.stop();
     });
 
-    // LinkedRoleCollector: Select role to unlink to bots role
     const linkedRoleCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
         time: 30_000,
@@ -73,7 +71,6 @@ export async function roleUnlink(interaction: CommandInteraction) {
         await linkedRoleCollector.stop();
     });
 
-    // Button Collector: Cancel or Unlink the selected roles
     const buttonCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 30_000,

@@ -47,8 +47,7 @@ function error(message: string): ContainerBuilder {
         .addTextDisplayComponents(text(message));
 }
 
-// container with a heading, followed by a divider and the body.
-// More components (texts, action rows, ...) can be added to the returned container
+// container with a heading, followed by a divider and the body
 function titled(color: number, title: string, body?: string): ContainerBuilder {
     const container = new ContainerBuilder()
         .setAccentColor(color)

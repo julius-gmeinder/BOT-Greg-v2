@@ -32,7 +32,7 @@ export async function roleLink(interaction: CommandInteraction) {
     if(botRoleIds.length <= 0)
         return interaction.reply(containers.reply(containers.error("The bot currently doesnt have any roles on this server")));
 
-    // Split linkedRoleIds into chunks of 25 --> for paging
+    // a select menu holds at most 25 options, so the roles are paged
     for (let i = 0; i < linkedRoleIds.length; i += optionsPerSelect) {
         const chunk = linkedRoleIds.slice(i, i + optionsPerSelect);
         linkedRoleIdsChunks.push(chunk);
@@ -53,7 +53,6 @@ export async function roleLink(interaction: CommandInteraction) {
 
     const reply = await interaction.reply(containers.reply(buildContainer(BuildBotRoleRowArray(interaction, botRoleIds))));
 
-    // BotRoleCollector: Select the bots role to link to another one
     const botRoleCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
         time: 30_000,
@@ -67,7 +66,7 @@ export async function roleLink(interaction: CommandInteraction) {
         await botRoleCollector.stop();
     });
 
-    // PaginationButtonCollector: Switch trough pages in case theres >= 25 roles that could be linked
+    // switch pages if more than 25 roles could be linked
     const paginationButtonCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 30_000,
@@ -84,7 +83,6 @@ export async function roleLink(interaction: CommandInteraction) {
         await paginationButtonCollector.update(containers.edit(buildContainer(BuildLinkedRoleRow(interaction, linkedRoleIdsChunks[pageNumber]), BuildPaginationButtonRow(pageNumber, pageAmount))));
     });
 
-    // LinkedRoleCollector: Select role to link to bots role
     const linkedRoleCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
         time: 30_000,
@@ -99,7 +97,6 @@ export async function roleLink(interaction: CommandInteraction) {
         await paginationButtonCollector.stop();
     });
 
-    // Button Collector: Cancel or Link up the selected roles
     const buttonCollector = await reply.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 30_000,

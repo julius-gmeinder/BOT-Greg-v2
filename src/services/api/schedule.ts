@@ -7,7 +7,6 @@ export default {
     getEvents
 }
 
-// the search is only sent if there is one
 function scheduleQuery(guildId: string, useFilters: boolean, search?: string | null): string {
     const params: Record<string, string> = { guildDiscordId: guildId, useFilters: String(useFilters) };
 

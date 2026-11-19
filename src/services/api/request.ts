@@ -36,7 +36,6 @@ export async function readErrorCode(res: Response): Promise<string | null> {
         return typeof data === "string" ? data : null;
     }
     catch {
-        // plain text body
         return text;
     }
 }

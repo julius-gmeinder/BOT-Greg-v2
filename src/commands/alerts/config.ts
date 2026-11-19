@@ -59,8 +59,7 @@ export async function alertsConfigAsync(interaction: ChatInputCommandInteraction
                     components: [containerUtils.success("Saving config...")]
                 });
 
-                // a channel is all a server needs to receive alerts.
-                // The alert role is not part of the config anymore, it exists if (and only if) the role management is enabled
+                // a channel is all a server needs, the alert role is not part of the config, it comes with the role management
                 const setConfigRes = await alerts.setConfig(interaction.guildId!, {
                     matchAlertChannelDiscordId: containerState.match.enabled ? containerState.match.channelId : null,
                     resultAlertChannelDiscordId: containerState.result.enabled ? containerState.result.channelId : null
