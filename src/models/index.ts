@@ -1,5 +1,6 @@
 export * from "./alerts";
 export * from "./autocomplete";
+export * from "./events";
 export * from "./commands";
 export * from "./filters";
 export * from "./guilds";

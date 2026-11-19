@@ -5,6 +5,9 @@ import * as commandsCommand from "./misc/commands";
 import * as settings from "./settings";
 import * as role from "./role";
 import * as reset from "./misc/reset";
+import * as matches from "./schedule/matches";
+import * as results from "./schedule/results";
+import * as events from "./schedule/events";
 
 export const commands = {
     //admin
@@ -17,4 +20,7 @@ export const commands = {
     //user
     commands: commandsCommand,
     roles,
+    matches,
+    results,
+    events,
 };

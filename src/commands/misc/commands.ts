@@ -18,7 +18,8 @@ export async function execute(interaction: CommandInteraction) {
 
     commandsData.forEach(command => {
         const perms: "admin" | "user" = command.toJSON().default_member_permissions === "8" ? "admin" : "user";
-        const subcommandsExist: boolean = command.options.length > 0 ? true : false; 
+        // plain options (e. g. of /matches) do not make a command a parent command
+        const subcommandsExist: boolean = command.options.some(option => option instanceof SlashCommandSubcommandBuilder || option instanceof SlashCommandSubcommandGroupBuilder);
 
         if(!subcommandsExist) {
             commandsInfo.push({

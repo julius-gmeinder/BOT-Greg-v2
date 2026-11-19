@@ -56,3 +56,11 @@ export type Result = MatchBase & {
     isForfeit: boolean,
     maps: Array<ResultMap>
 }
+
+
+// a match that is currently running, the scores are the maps won so far
+export type MatchLive = Match & {
+    teamXMapScore: number,
+    teamYMapScore: number,
+    maps: Array<ResultMap>
+}
