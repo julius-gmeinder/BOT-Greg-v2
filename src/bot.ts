@@ -32,10 +32,11 @@ client.once(Events.ClientReady, async (readyClient) => {
 
     client.user?.setPresence({
         activities: [{ 
-            name: `liquipedia.net 🔎`,
-            type: ActivityType.Watching
+            name: `custom`,
+            type: ActivityType.Custom,
+            state: `BACK ONLINE 😎`
         }],
-        status: "dnd"
+        status: "online"
     });
 
     logger.info("status", "BOT Greg is online 😎");
